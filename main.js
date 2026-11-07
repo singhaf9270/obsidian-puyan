@@ -17,6 +17,8 @@ const DEFAULT_SETTINGS = {
   showDuration: true,
   showNoteTitle: true,
   showOpenButton: true,
+  enableConfetti: true,
+  lastSeenVersion: "",
   savedChecklists: [
     { id: "weekdays", name: "روزهای هفته", type: "fixed", items: ["شنبه","یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه"] },
     { id: "steps10", name: "مراحل ده‌تایی", type: "step", interval: 10, dateStep: 1, template: "- [ ] {n}" },
@@ -34,6 +36,8 @@ const TEXT = {
     saveProgress: "ذخیره درصد پیشرفت در Frontmatter", countSubtasks: "شمارش زیرتسک‌ها",
     showCounter: "نمایش شمارنده تسک‌ها", showStartDate: "نمایش تاریخ شروع", showEndDate: "نمایش تاریخ پایان",
     showDuration: "نمایش مدت انجام", showNoteTitle: "نمایش عنوان یادداشت", showOpenButton: "نمایش دکمهٔ بازکردن یادداشت",
+    enableConfetti: "جشن کاغذباران در ۱۰۰٪",
+    enableConfettiDesc: "پخش کاغذباران روی کل صفحهٔ ابسیدین هنگام رسیدن پیشرفت به صددرصد",
     commandInsert: "درج ویجت پیشرفت", commandChecklist: "ساخت چک‌لیست از قالب (انتخاب دستی)",
     commandChecklistPrefix: "ساخت چک‌لیست:",
     modalTitle: "ساخت چک‌لیست", activity: "عنوان فعالیت", total: "مقدار کل",
@@ -70,13 +74,22 @@ const TEXT = {
     calendarPluginMissing: "پلاگین «تقویم پارسی» (persian-calendar) نصب یا فعال نیست. تبدیل تاریخ شمسی در دسترس نخواهد بود.",
     widgetBefore: "ویجت پیشرفت را قبل از چک‌لیست قرار بده",
     dateStepLabel: "ضریب تاریخ", dateStepDesc: "هر چند روز یکبار تاریخ ثبت شود (۱ = هر روز)",
-    openNote: "بازکردن یادداشت", today: "امروز", closeBtn: "بستن",
+    openNote: "بازکردن یادداشت", openNoteTooltip: "باز کردن یادداشت مرجع",
+    today: "امروز", closeBtn: "بستن",
     tplTokensLabel: "توکن‌ها:", tplTokenN: "شماره مرحله", tplTokenTotal: "مقدار کل",
     tplTokenTitle: "عنوان فعالیت", tplTokenDate: "تاریخ مرحله", tplTextLabel: "متن:",
     tplTextCheckbox: "چک‌باکس", tplTextOf: "از", tplTextNewline: "خط جدید",
     tplPresetsLabel: "آماده:", tplPresetSimple: "ساده", tplPresetWithTitle: "با عنوان",
     tplPresetWithDate: "با تاریخ", tplPresetBare: "فقط شماره",
     tplPreviewLabel: "پیش‌نمایش:", tplSampleTitle: "نمونه",
+    completionMsg: "تبریک! تمامی موارد با موفقیت تکمیل شد",
+    whatsNewTooltip: "تغییرات جدید",
+    whatsNewTitle: "تغییرات جدید",
+    whatsNewFirstInstall: "نصب با موفقیت انجام شد. خوش آمدید!",
+    whatsNewSince: (v) => `از نسخهٔ ${v} به بعد`,
+    whatsNewExample: "مثال:",
+    whatsNewStart: "شروع کنید",
+    whatsNewFull: "تغییرات کامل",
     supportAriaLabel: "ارتباط با ما و حمایت", supportHeading: "همراه ما باشید",
     supportIntro: "آموزش‌ها، تازه‌ها و نکته‌های کاربردی ابسیدین را در کانال‌های ما دنبال کنید.",
     supportChannelJoin: "عضویت در کانال",
@@ -93,6 +106,8 @@ const TEXT = {
     saveProgress: "Save progress percentage to Frontmatter", countSubtasks: "Count nested tasks",
     showCounter: "Show task counter", showStartDate: "Show start date", showEndDate: "Show completion date",
     showDuration: "Show duration", showNoteTitle: "Show note title", showOpenButton: "Show 'open note' button",
+    enableConfetti: "Confetti celebration at 100%",
+    enableConfettiDesc: "Play paper confetti across the Obsidian window when progress reaches 100%",
     commandInsert: "Insert progress widget", commandChecklist: "Create checklist from template (pick manually)",
     commandChecklistPrefix: "Create checklist:",
     modalTitle: "Create checklist", activity: "Activity title", total: "Total amount",
@@ -129,13 +144,22 @@ const TEXT = {
     calendarPluginMissing: "The 'persian-calendar' plugin is not installed or enabled. Jalali date conversion will be unavailable.",
     widgetBefore: "Insert progress widget before the checklist",
     dateStepLabel: "Date step", dateStepDesc: "How many days between each item's date (1 = every day)",
-    openNote: "Open note", today: "Today", closeBtn: "Close",
+    openNote: "Open note", openNoteTooltip: "Open source note",
+    today: "Today", closeBtn: "Close",
     tplTokensLabel: "Tokens:", tplTokenN: "Step number", tplTokenTotal: "Total",
     tplTokenTitle: "Activity title", tplTokenDate: "Step date", tplTextLabel: "Text:",
     tplTextCheckbox: "Checkbox", tplTextOf: "of", tplTextNewline: "Newline",
     tplPresetsLabel: "Presets:", tplPresetSimple: "Simple", tplPresetWithTitle: "With title",
     tplPresetWithDate: "With date", tplPresetBare: "Bare number",
     tplPreviewLabel: "Preview:", tplSampleTitle: "Sample",
+    completionMsg: "Congratulations! All tasks are completed",
+    whatsNewTooltip: "What's new",
+    whatsNewTitle: "What's new",
+    whatsNewFirstInstall: "Installation complete. Welcome!",
+    whatsNewSince: (v) => `Since version ${v}`,
+    whatsNewExample: "Example:",
+    whatsNewStart: "Get started",
+    whatsNewFull: "Full changelog",
     supportAriaLabel: "Connect and support", supportHeading: "Stay connected",
     supportIntro: "Follow our channels for Obsidian tutorials, updates and practical tips.",
     supportChannelJoin: "Join channel",
@@ -145,9 +169,175 @@ const TEXT = {
   }
 };
 
+/* ============================================================
+   Changelog — shown in the "What's new" modal
+   ============================================================ */
+const CHANGELOG = {
+  "1.1.0": {
+    title: {
+      fa: "✨ پویان ۱.۱.۰",
+      en: "✨ Puyan 1.1.0"
+    },
+    intro: {
+      fa: "نسخهٔ جدید با ظاهر تازه و کاغذباران رسید!",
+      en: "A fresh look and confetti are here!"
+    },
+    items: {
+      fa: [
+        {
+          icon: "🎨",
+          text: "ویجت با ظاهر شیشه‌ای، نوار پیشرفت شیمری و آیکون‌های SVG بازطراحی شد.",
+          example: {
+            lang: "markdown",
+            code: "```puyan\nnote: Projects/Book.md\ntitle: مطالعه کتاب عادت‌های اتمی\n```"
+          }
+        },
+        {
+          icon: "🚀",
+          text: "آیکون ویجت با درصد پیشرفت تغییر می‌کند: راکت → صاعقه → ماه → شعله → جام."
+        },
+        {
+          icon: "🔗",
+          text: "دکمهٔ بازکردن یادداشت به یک آیکون کوچک تبدیل شد و فقط وقتی ویجت در یادداشت دیگری است نمایش داده می‌شود."
+        },
+        {
+          icon: "✏️",
+          text: "می‌توانید عنوان دلخواه را داخل کدبلاک ویجت با کلید title تعریف کنید."
+        },
+        {
+          icon: "🎉",
+          text: "هنگام رسیدن به ۱۰۰٪ کاغذباران هم داخل ویجت و هم روی کل صفحهٔ ابسیدین پخش می‌شود."
+        },
+        {
+          icon: "🧹",
+          text: "اگر پیشرفت به صفر برگردد، فیلد «پیشرفت» از Frontmatter حذف می‌شود."
+        }
+      ],
+      en: [
+        {
+          icon: "🎨",
+          text: "Redesigned widget with glassmorphism, animated shimmer bar, and SVG icons.",
+          example: {
+            lang: "markdown",
+            code: "```puyan\nnote: Projects/Book.md\ntitle: Read Atomic Habits\n```"
+          }
+        },
+        {
+          icon: "🚀",
+          text: "The widget icon changes with progress: rocket → lightning → moon → flame → trophy."
+        },
+        {
+          icon: "🔗",
+          text: "The open-note button is now a compact icon, shown only when the widget lives in a different note."
+        },
+        {
+          icon: "✏️",
+          text: "Set a custom title inside the widget code block using the title key."
+        },
+        {
+          icon: "🎉",
+          text: "At 100%, confetti bursts inside the widget and across the whole Obsidian window."
+        },
+        {
+          icon: "🧹",
+          text: "When progress drops back to 0%, the progress property is removed from Frontmatter."
+        }
+      ]
+    }
+  }
+};
+
 const PERSIAN_MONTHS = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
 const ENGLISH_MONTHS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
 const JALALI_MONTHS_EN = ["Farvardin","Ordibehesht","Khordad","Tir","Mordad","Shahrivar","Mehr","Aban","Azar","Dey","Bahman","Esfand"];
+
+/* ============================================================
+   SVG Icon Library — built as real DOM nodes
+   ============================================================ */
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function buildSvg(children, opts = {}) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", opts.viewBox || "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", opts.strokeWidth || "2");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("xmlns", SVG_NS);
+  for (const spec of children) {
+    const node = document.createElementNS(SVG_NS, spec.tag);
+    for (const k in (spec.attrs || {})) node.setAttribute(k, spec.attrs[k]);
+    svg.appendChild(node);
+  }
+  return svg;
+}
+
+const ICON_BUILDERS = {
+  rocket: () => buildSvg([
+    { tag: "path", attrs: { d: "M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" } },
+    { tag: "path", attrs: { d: "m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" } },
+    { tag: "path", attrs: { d: "M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" } },
+    { tag: "path", attrs: { d: "M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" } }
+  ]),
+  target: () => buildSvg([
+    { tag: "circle", attrs: { cx: "12", cy: "12", r: "10" } },
+    { tag: "circle", attrs: { cx: "12", cy: "12", r: "6" } },
+    { tag: "circle", attrs: { cx: "12", cy: "12", r: "2" } }
+  ]),
+  book: () => buildSvg([
+    { tag: "path", attrs: { d: "M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" } }
+  ]),
+  flame: () => buildSvg([
+    { tag: "path", attrs: { d: "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" } }
+  ]),
+  trophy: () => buildSvg([
+    { tag: "path", attrs: { d: "M6 9H4.5a2.5 2.5 0 0 1 0-5H6" } },
+    { tag: "path", attrs: { d: "M18 9h1.5a2.5 2.5 0 0 0 0-5H18" } },
+    { tag: "path", attrs: { d: "M4 22h16" } },
+    { tag: "path", attrs: { d: "M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" } },
+    { tag: "path", attrs: { d: "M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" } },
+    { tag: "path", attrs: { d: "M18 2H6v7a6 6 0 0 0 12 0V2Z" } }
+  ]),
+  lightning: () => buildSvg([
+    { tag: "polygon", attrs: { points: "13 2 3 14 12 14 11 22 21 10 12 10 13 2" } }
+  ]),
+  moon: () => buildSvg([
+    { tag: "path", attrs: { d: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" } }
+  ]),
+  noteLink: () => buildSvg([
+    { tag: "path", attrs: { d: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" } },
+    { tag: "polyline", attrs: { points: "14 2 14 8 20 8" } }
+  ], { strokeWidth: "2" }),
+  openExternalRtl: () => buildSvg([
+    { tag: "path", attrs: { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" } },
+    { tag: "polyline", attrs: { points: "9 3 3 3 3 9" } },
+    { tag: "line", attrs: { x1: "14", y1: "14", x2: "3", y2: "3" } }
+  ], { strokeWidth: "2" }),
+  openExternalLtr: () => buildSvg([
+    { tag: "path", attrs: { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" } },
+    { tag: "polyline", attrs: { points: "15 3 21 3 21 9" } },
+    { tag: "line", attrs: { x1: "10", y1: "14", x2: "21", y2: "3" } }
+  ], { strokeWidth: "2" }),
+  checkMini: () => buildSvg([
+    { tag: "polyline", attrs: { points: "20 6 9 17 4 12" } }
+  ], { strokeWidth: "2.2" }),
+  circleMini: () => buildSvg([
+    { tag: "circle", attrs: { cx: "12", cy: "12", r: "9" } }
+  ], { strokeWidth: "2" }),
+  clock: () => buildSvg([
+    { tag: "circle", attrs: { cx: "12", cy: "12", r: "10" } },
+    { tag: "polyline", attrs: { points: "12 6 12 12 16 14" } }
+  ], { strokeWidth: "2" }),
+  sparkles: () => buildSvg([
+    { tag: "path", attrs: { d: "m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" } },
+    { tag: "path", attrs: { d: "M5 3v4" } },
+    { tag: "path", attrs: { d: "M19 17v4" } },
+    { tag: "path", attrs: { d: "M3 5h4" } },
+    { tag: "path", attrs: { d: "M17 19h4" } }
+  ], { strokeWidth: "2" })
+};
 
 /* ---------------- DOM helpers ---------------- */
 function el(parent, tag, cls, text) {
@@ -165,7 +355,6 @@ function link(parent, cls, href, ariaLabel) {
   if (ariaLabel) a.setAttribute("aria-label", ariaLabel);
   return a;
 }
-const SVG_NS = "http://www.w3.org/2000/svg";
 function makeSvg(parent, viewBox, children) {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", viewBox);
@@ -213,6 +402,228 @@ function calendarIcon(parent) {
   return svg;
 }
 
+/* ---------------- SVG render helpers (DOM-based) ---------------- */
+function renderIcon(containerEl, key) {
+  containerEl.empty();
+  const builder = ICON_BUILDERS[key];
+  if (builder) {
+    const svg = builder();
+    containerEl.appendChild(svg);
+    return true;
+  }
+  return false;
+}
+
+function getWidgetIconForPercent(percent) {
+  if (percent >= 100) return "trophy";
+  if (percent >= 75) return "flame";
+  if (percent >= 50) return "moon";
+  if (percent >= 25) return "lightning";
+  return "rocket";
+}
+
+function getProgressTheme(percent) {
+  if (percent >= 100) {
+    return {
+      gradient: "linear-gradient(90deg, #10b981 0%, #059669 50%, #34d399 100%)",
+      accent: "#10b981",
+      soft: "rgba(16, 185, 129, 0.16)",
+      border: "rgba(16, 185, 129, 0.34)",
+      glow: "rgba(16,185,129,.45)"
+    };
+  }
+  if (percent >= 75) {
+    return {
+      gradient: "linear-gradient(90deg, #8b5cf6 0%, #a78bfa 50%, #c4b5fd 100%)",
+      accent: "#8b5cf6",
+      soft: "rgba(139, 92, 246, 0.16)",
+      border: "rgba(139, 92, 246, 0.32)",
+      glow: "rgba(139,92,246,.45)"
+    };
+  }
+  if (percent >= 50) {
+    return {
+      gradient: "linear-gradient(90deg, #3b82f6 0%, #60a5fa 50%, #93c5fd 100%)",
+      accent: "#3b82f6",
+      soft: "rgba(59, 130, 246, 0.16)",
+      border: "rgba(59, 130, 246, 0.32)",
+      glow: "rgba(59,130,246,.45)"
+    };
+  }
+  if (percent >= 25) {
+    return {
+      gradient: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%)",
+      accent: "#f59e0b",
+      soft: "rgba(245, 158, 11, 0.16)",
+      border: "rgba(245, 158, 11, 0.32)",
+      glow: "rgba(245,158,11,.45)"
+    };
+  }
+  return {
+    gradient: "linear-gradient(90deg, #ef4444 0%, #f87171 50%, #fca5a5 100%)",
+    accent: "#ef4444",
+    soft: "rgba(239, 68, 68, 0.16)",
+    border: "rgba(239, 68, 68, 0.32)",
+    glow: "rgba(239,68,68,.45)"
+  };
+}
+
+/* ---------------- Confetti Engines ---------------- */
+function launchConfettiOnElement(widgetEl) {
+  if (!widgetEl || !widgetEl.isConnected) return;
+  const existing = widgetEl.querySelector(".puyan-confetti-canvas");
+  if (existing) existing.remove();
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "puyan-confetti-canvas";
+  widgetEl.appendChild(canvas);
+
+  const rect = widgetEl.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(rect.width, 300);
+  const height = Math.max(rect.height, 140);
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) { canvas.remove(); return; }
+  ctx.scale(dpr, dpr);
+
+  const colors = ["#10b981","#34d399","#6366f1","#8b5cf6","#f59e0b","#ec4899","#06b6d4","#f43f5e","#eab308"];
+  const particles = [];
+  const count = 75;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.random() * Math.PI) + Math.PI;
+    const speed = 2.5 + Math.random() * 5.5;
+    particles.push({
+      x: width * (0.15 + Math.random() * 0.7),
+      y: height * 0.65,
+      vx: Math.cos(angle) * speed * (Math.random() > 0.5 ? 1 : -1),
+      vy: -Math.abs(Math.sin(angle) * speed) - (1.5 + Math.random() * 3),
+      w: 5 + Math.random() * 6,
+      h: 4 + Math.random() * 4,
+      color: colors[i % colors.length],
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 11,
+      tiltAngle: Math.random() * Math.PI,
+      tiltSpeed: 0.08 + Math.random() * 0.14,
+      opacity: 1,
+      gravity: 0.13 + Math.random() * 0.06,
+      drag: 0.985
+    });
+  }
+
+  let frame = 0;
+  const maxFrames = 170;
+  function animate() {
+    frame++;
+    ctx.clearRect(0, 0, width, height);
+    let active = 0;
+    for (const p of particles) {
+      p.vx *= p.drag;
+      p.vy = p.vy * p.drag + p.gravity;
+      p.x += p.vx + Math.sin(p.tiltAngle) * 0.4;
+      p.y += p.vy;
+      p.rotation += p.rotationSpeed;
+      p.tiltAngle += p.tiltSpeed;
+      if (frame > maxFrames * 0.65) p.opacity = Math.max(0, p.opacity - 0.025);
+      if (p.y < height + 20 && p.opacity > 0.02) {
+        active++;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.scale(Math.cos(p.tiltAngle), 1);
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+    }
+    if (active > 0 && frame < maxFrames) requestAnimationFrame(animate);
+    else canvas.remove();
+  }
+  requestAnimationFrame(animate);
+}
+
+function launchGlobalConfetti() {
+  const existing = document.querySelector(".puyan-global-confetti");
+  if (existing) existing.remove();
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "puyan-global-confetti";
+  document.body.appendChild(canvas);
+
+  const dpr = window.devicePixelRatio || 1;
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  canvas.style.width = width + "px";
+  canvas.style.height = height + "px";
+  const ctx = canvas.getContext("2d");
+  if (!ctx) { canvas.remove(); return; }
+  ctx.scale(dpr, dpr);
+
+  const colors = ["#10b981","#34d399","#6366f1","#8b5cf6","#f59e0b","#ec4899","#06b6d4","#f43f5e","#eab308"];
+  const particles = [];
+  const count = 180;
+  for (let i = 0; i < count; i++) {
+    const fromLeft = Math.random() > 0.5;
+    const originX = fromLeft ? -20 : width + 20;
+    const originY = height * (0.3 + Math.random() * 0.4);
+    const angle = fromLeft
+      ? (-Math.PI / 3) - Math.random() * (Math.PI / 6)
+      : (-2 * Math.PI / 3) + Math.random() * (Math.PI / 6);
+    const speed = 9 + Math.random() * 8;
+    particles.push({
+      x: originX,
+      y: originY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - (2 + Math.random() * 3),
+      w: 6 + Math.random() * 7,
+      h: 5 + Math.random() * 5,
+      color: colors[i % colors.length],
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 14,
+      tiltAngle: Math.random() * Math.PI,
+      tiltSpeed: 0.08 + Math.random() * 0.16,
+      opacity: 1,
+      gravity: 0.18 + Math.random() * 0.08,
+      drag: 0.99
+    });
+  }
+
+  let frame = 0;
+  const maxFrames = 220;
+  function animate() {
+    frame++;
+    ctx.clearRect(0, 0, width, height);
+    let active = 0;
+    for (const p of particles) {
+      p.vx *= p.drag;
+      p.vy = p.vy * p.drag + p.gravity;
+      p.x += p.vx + Math.sin(p.tiltAngle) * 0.5;
+      p.y += p.vy;
+      p.rotation += p.rotationSpeed;
+      p.tiltAngle += p.tiltSpeed;
+      if (frame > maxFrames * 0.6) p.opacity = Math.max(0, p.opacity - 0.02);
+      if (p.y < height + 40 && p.opacity > 0.02) {
+        active++;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.scale(Math.cos(p.tiltAngle), 1);
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+    }
+    if (active > 0 && frame < maxFrames) requestAnimationFrame(animate);
+    else canvas.remove();
+  }
+  requestAnimationFrame(animate);
+}
+
 /* ---------------- digit helpers ---------------- */
 function normalizeDigits(value) {
   return String(value)
@@ -222,6 +633,9 @@ function normalizeDigits(value) {
 function displayDigits(value, mode) {
   const s = String(value);
   return mode === "fa" ? s.replace(/[0-9]/g, d => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]) : s;
+}
+function toLocalizedDigits(val, lang) {
+  return displayDigits(val, lang === "fa" ? "fa" : "en");
 }
 function todayLocal() {
   const now = new Date();
@@ -364,11 +778,15 @@ function readTasks(content, countSubtasks) {
   }
   return tasks;
 }
+
+/* ---------------- widget options parser ---------------- */
 function parseWidgetOptions(source) {
   const options = {};
   for (const line of String(source || "").split(/\r?\n/)) {
-    const match = line.match(/^\s*note\s*:\s*(.+?)\s*$/i);
-    if (match) options.note = match[1].trim();
+    const noteMatch = line.match(/^\s*note\s*:\s*(.+?)\s*$/i);
+    if (noteMatch) options.note = noteMatch[1].trim();
+    const titleMatch = line.match(/^\s*title\s*:\s*(.+?)\s*$/i);
+    if (titleMatch) options.title = titleMatch[1].trim();
   }
   return options;
 }
@@ -377,7 +795,7 @@ function resolveLinkTarget(raw) {
 }
 
 /* ==================================================================== */
-/* Inline popover calendar (Persian / Gregorian) — attached to modal    */
+/* Inline popover calendar (Persian / Gregorian)                        */
 /* ==================================================================== */
 class PopoverCalendar {
   constructor(anchor, plugin, initial, onPick) {
@@ -390,15 +808,12 @@ class PopoverCalendar {
     this.current = (initial instanceof Date && !isNaN(initial.getTime())) ? new Date(initial) : todayLocal();
     this.overlay = null;
     this.popover = null;
-    this._outsideHandler = null;
     this.open();
   }
 
   open() {
-    // close any existing instance
     document.querySelectorAll(".puyan-cal-overlay").forEach(n => n.remove());
 
-    // full-screen transparent overlay catches outside clicks
     this.overlay = document.body.createDiv({ cls: "puyan-cal-overlay" });
     this.overlay.addEventListener("pointerdown", (e) => {
       if (e.target === this.overlay) this.close();
@@ -407,7 +822,6 @@ class PopoverCalendar {
     this.popover = document.body.createDiv({ cls: "puyan-cal-popover" });
     this.popover.setAttribute("dir", this.settings.language === "fa" ? "rtl" : "ltr");
 
-    // position based on anchor's viewport rect (fixed positioning)
     const aRect = this.anchor.getBoundingClientRect();
     const popW = 280;
     const popH = 340;
@@ -415,23 +829,13 @@ class PopoverCalendar {
 
     let left = aRect.left;
     let top = aRect.bottom + margin;
-
-    // RTL: align right edge of popover with right edge of button
-    if (this.settings.language === "fa") {
-      left = aRect.right - popW;
-    }
-
-    // flip up if no room below
-    if (top + popH > window.innerHeight - margin) {
-      top = Math.max(margin, aRect.top - popH - margin);
-    }
-    // clamp horizontally
+    if (this.settings.language === "fa") left = aRect.right - popW;
+    if (top + popH > window.innerHeight - margin) top = Math.max(margin, aRect.top - popH - margin);
     if (left < margin) left = margin;
     if (left + popW > window.innerWidth - margin) left = window.innerWidth - popW - margin;
 
     this.popover.style.top = top + "px";
     this.popover.style.left = left + "px";
-
     this._render();
   }
 
@@ -443,7 +847,6 @@ class PopoverCalendar {
     const year = pj ? pj.jy : this.current.getFullYear();
     const month = pj ? pj.jm : this.current.getMonth() + 1;
 
-    // header
     const header = pop.createDiv({ cls: "puyan-cal-header" });
     const prev = header.createEl("button", { cls: "puyan-cal-nav", text: "‹" });
     prev.setAttribute("type", "button");
@@ -486,14 +889,12 @@ class PopoverCalendar {
       }
     };
 
-    // weekday header
     const grid = pop.createDiv({ cls: "puyan-cal-grid" });
     const weekdaysFa = isJalali ? ["ش","ی","د","س","چ","پ","ج"] : ["ی","د","س","چ","پ","ج","ش"];
     const weekdaysEn = ["S","M","T","W","T","F","S"];
     const weekdays = this.settings.language === "fa" ? weekdaysFa : weekdaysEn;
     weekdays.forEach(w => grid.createSpan({ cls: "puyan-cal-wd", text: w }));
 
-    // first day / days in month
     let firstDay, daysInMonth;
     if (isJalali) {
       const g = calApi.jalaliToDate(year, month, 1);
@@ -530,7 +931,6 @@ class PopoverCalendar {
       };
     }
 
-    // footer
     const footer = pop.createDiv({ cls: "puyan-cal-footer" });
     const todayBtn = footer.createEl("button", { cls: "puyan-cal-today", text: this.t.today });
     todayBtn.setAttribute("type", "button");
@@ -545,6 +945,7 @@ class PopoverCalendar {
     if (this.popover) { this.popover.remove(); this.popover = null; }
   }
 }
+
 /* ==================================================================== */
 /* Compact stepper                                                      */
 /* ==================================================================== */
@@ -676,7 +1077,7 @@ class TemplateBuilder {
 }
 
 /* ==================================================================== */
-/* Checklist preset modal (add / edit)                                  */
+/* Checklist preset modal                                              */
 /* ==================================================================== */
 class ChecklistPresetModal extends Modal {
   constructor(app, plugin, preset, done) {
@@ -932,6 +1333,80 @@ class ChecklistWizardModal extends Modal {
 }
 
 /* ==================================================================== */
+/* What's new modal                                                     */
+/* ==================================================================== */
+class WhatsNewModal extends Modal {
+  constructor(app, plugin, version, isFirstInstall = false) {
+    super(app);
+    this.plugin = plugin;
+    this.version = version;
+    this.isFirstInstall = isFirstInstall;
+    this.lang = plugin.settings.language || "fa";
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    const lang = this.lang;
+    const t = TEXT[lang] || TEXT.fa;
+    const entry = CHANGELOG[this.version];
+
+    contentEl.empty();
+    contentEl.addClass("puyan-modal", "puyan-whats-new");
+    contentEl.setAttribute("dir", lang === "fa" ? "rtl" : "ltr");
+
+    const header = contentEl.createDiv({ cls: "puyan-wn-header" });
+    const titleWrap = header.createDiv({ cls: "puyan-wn-title-wrap" });
+    const title = entry
+      ? (entry.title[lang] || entry.title.en || entry.title.fa)
+      : t.whatsNewTitle;
+    titleWrap.createEl("h2", { cls: "puyan-wn-title", text: title });
+
+    const subtitle = this.isFirstInstall
+      ? t.whatsNewFirstInstall
+      : t.whatsNewSince(this.version);
+    titleWrap.createEl("div", { cls: "puyan-wn-subtitle", text: subtitle });
+
+    if (entry) {
+      const intro = entry.intro[lang] || entry.intro.en || entry.intro.fa;
+      if (intro) {
+        contentEl.createEl("p", { cls: "puyan-wn-intro", text: intro });
+      }
+
+      const items = entry.items[lang] || entry.items.en || entry.items.fa || [];
+      const list = contentEl.createDiv({ cls: "puyan-wn-list" });
+      for (const item of items) {
+        const row = list.createDiv({ cls: "puyan-wn-item" });
+        row.createSpan({ cls: "puyan-wn-item-icon", text: item.icon || "•" });
+        const body = row.createDiv({ cls: "puyan-wn-item-body" });
+        body.createDiv({ cls: "puyan-wn-item-text", text: item.text });
+
+        if (item.example && item.example.code) {
+          const exWrap = body.createDiv({ cls: "puyan-wn-example" });
+          exWrap.createSpan({ cls: "puyan-wn-example-label", text: t.whatsNewExample });
+          exWrap.createEl("pre", { cls: "puyan-wn-code" }, (pre) => {
+            pre.createEl("code", { text: item.example.code });
+          });
+        }
+      }
+    }
+
+    const footer = contentEl.createDiv({ cls: "puyan-wn-footer" });
+    const closeBtn = footer.createEl("button", {
+      cls: "mod-cta",
+      text: t.whatsNewStart
+    });
+    closeBtn.addEventListener("click", () => this.close());
+
+    const linkBtn = footer.createEl("button", { text: t.whatsNewFull });
+    linkBtn.addEventListener("click", () => {
+      window.open("https://github.com/singhaf9270/puyan/releases", "_blank");
+    });
+  }
+
+  onClose() { this.contentEl.empty(); }
+}
+
+/* ==================================================================== */
 /* Settings tab                                                         */
 /* ==================================================================== */
 class PuyanSettings extends PluginSettingTab {
@@ -940,7 +1415,36 @@ class PuyanSettings extends PluginSettingTab {
     const el = this.containerEl, p = this.plugin, s = p.settings, t = TEXT[s.language];
     el.empty();
     el.setAttribute("dir", s.language === "fa" ? "rtl" : "ltr");
-    el.createEl("h2", { text: t.settings });
+
+    /* Header with title + "what's new" icon button */
+    const header = el.createDiv({ cls: "puyan-settings-header" });
+    header.createEl("h2", { text: t.settings, cls: "puyan-settings-title" });
+
+    const currentVersion = p.manifest.version;
+    const hasChangelog = Boolean(CHANGELOG[currentVersion]);
+    const whatsNewBtn = header.createEl("button", {
+      cls: "puyan-whats-new-btn",
+      attr: {
+        type: "button",
+        title: t.whatsNewTooltip,
+        "aria-label": t.whatsNewTooltip
+      }
+    });
+    if (!hasChangelog) whatsNewBtn.addClass("is-empty");
+    renderIcon(whatsNewBtn, "sparkles");
+    const versionBadge = whatsNewBtn.createSpan({ cls: "puyan-whats-new-version", text: currentVersion });
+    whatsNewBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (hasChangelog) {
+        new WhatsNewModal(this.app, p, currentVersion, false).open();
+      } else {
+        new Notice(
+          s.language === "fa"
+            ? "برای این نسخه یادداشت تغییراتی ثبت نشده است."
+            : "No changelog entry registered for this version."
+        );
+      }
+    });
 
     new Setting(el).setName(t.language).addDropdown(d => d
       .addOption("fa", t.fa).addOption("en", t.en).setValue(s.language)
@@ -976,6 +1480,7 @@ class PuyanSettings extends PluginSettingTab {
     p.toggleSetting(el, t.showDuration, "showDuration");
     p.toggleSetting(el, t.showNoteTitle, "showNoteTitle");
     p.toggleSetting(el, t.showOpenButton, "showOpenButton");
+    p.toggleSetting(el, t.enableConfetti, "enableConfetti");
 
     el.createEl("h3", { text: t.savedLists });
     const addRow = new Setting(el).setName(t.savedLists).setDesc(
@@ -1084,12 +1589,20 @@ module.exports = class PuyanPlugin extends Plugin {
         if (destination) target = destination.path;
         else {
           el.addClass("puyan");
+          el.setAttribute("dir", this.settings.language === "fa" ? "rtl" : "ltr");
           el.createDiv({ cls: "puyan-empty", text: TEXT[this.settings.language].targetNotFound + options.note });
           return;
         }
       }
       const path = target;
-      const view = { el, path, sourcePath: ctx.sourcePath, refresh: null };
+      const view = {
+        el, path, sourcePath: ctx.sourcePath,
+        title: options.title || "",
+        isCrossNote: Boolean(options.note && target !== ctx.sourcePath),
+        hasCelebratedInitial100: false,
+        lastPercent: null,
+        refresh: null
+      };
       view.refresh = () => this.renderWidget(view);
       if (!this.views.has(path)) this.views.set(path, new Set());
       this.views.get(path).add(view);
@@ -1125,6 +1638,9 @@ module.exports = class PuyanPlugin extends Plugin {
 
     this.refreshPresetCommands();
     this.addSettingTab(new PuyanSettings(this.app, this));
+
+    // Show "What's new" on version bump / first install
+    this.app.workspace.onLayoutReady(() => this.maybeShowWhatsNew());
   }
 
   _insertChecklist(editor, result) {
@@ -1157,9 +1673,36 @@ module.exports = class PuyanPlugin extends Plugin {
     }
   }
 
+  async maybeShowWhatsNew() {
+    const currentVersion = this.manifest.version;
+    const stored = this.settings.lastSeenVersion || null;
+
+    if (!stored) {
+      this.settings.lastSeenVersion = currentVersion;
+      await this.saveSettings();
+      if (CHANGELOG[currentVersion]) {
+        setTimeout(() => {
+          new WhatsNewModal(this.app, this, currentVersion, true).open();
+        }, 600);
+      }
+      return;
+    }
+
+    if (stored === currentVersion) return;
+
+    this.settings.lastSeenVersion = currentVersion;
+    await this.saveSettings();
+    if (CHANGELOG[currentVersion]) {
+      setTimeout(() => {
+        new WhatsNewModal(this.app, this, currentVersion, false).open();
+      }, 600);
+    }
+  }
+
   onunload() {
     this.views.clear();
     document.querySelectorAll(".puyan-cal-popover").forEach(n => n.remove());
+    document.querySelectorAll(".puyan-global-confetti").forEach(n => n.remove());
   }
   async saveSettings() { await this.saveData(this.settings); }
 
@@ -1229,9 +1772,16 @@ module.exports = class PuyanPlugin extends Plugin {
 
     if (total) {
       const started = done > 0, completed = done === total;
-      const needsChange = (started && !fm[startKey]) || (completed && !fm[endKey]) ||
-        (!completed && !!fm[endKey]) || (!started && !!fm[startKey]) ||
-        (s.saveProgress && Number(normalizeDigits(fm[progressKey] ?? NaN)) !== percent);
+      const needsChange =
+        (started && !fm[startKey]) ||
+        (completed && !fm[endKey]) ||
+        (!completed && !!fm[endKey]) ||
+        (!started && !!fm[startKey]) ||
+        (s.saveProgress && (
+          percent === 0
+            ? fm[progressKey] !== undefined && fm[progressKey] !== null && String(fm[progressKey]).trim() !== ""
+            : Number(normalizeDigits(fm[progressKey] ?? NaN)) !== percent
+        ));
       if (needsChange && !this.updating.has(file.path)) {
         this.updating.add(file.path);
         try {
@@ -1244,7 +1794,10 @@ module.exports = class PuyanPlugin extends Plugin {
               const days = this.durationInDays(front[startKey], front[endKey]);
               if (days !== null) front[durationKey] = days;
             }
-            if (s.saveProgress) front[progressKey] = percent;
+            if (s.saveProgress) {
+              if (percent === 0) delete front[progressKey];
+              else front[progressKey] = percent;
+            }
           });
         } catch (error) { console.error("Puyan Frontmatter update failed", error); }
         finally { window.setTimeout(() => this.updating.delete(file.path), 500); }
@@ -1255,67 +1808,148 @@ module.exports = class PuyanPlugin extends Plugin {
     view.el.empty();
     view.el.addClass("puyan");
     view.el.setAttribute("dir", s.language === "fa" ? "rtl" : "ltr");
-    if (!total) { view.el.createDiv({ cls: "puyan-empty", text: t.noTasks }); return; }
+    view.el.toggleClass("is-complete", percent >= 100 && total > 0);
 
-    if (s.showNoteTitle) view.el.createDiv({ cls: "puyan-note-title", text: "📄 " + file.basename });
+    if (!total) {
+      view.el.createDiv({ cls: "puyan-empty", text: t.noTasks });
+      return;
+    }
 
-    let gradient, icon, status, glowColor;
-    if (percent === 100) { gradient = "linear-gradient(135deg,#10b981,#34d399,#6ee7b7)"; icon = "🎉"; status = t.complete; glowColor = "rgba(16,185,129,.4)"; }
-    else if (percent >= 75) { gradient = "linear-gradient(135deg,#8b5cf6,#a78bfa,#c4b5fd)"; icon = "🔥"; status = t.near; glowColor = "rgba(139,92,246,.4)"; }
-    else if (percent >= 50) { gradient = "linear-gradient(135deg,#3b82f6,#60a5fa,#93c5fd)"; icon = "🌓"; status = t.halfway; glowColor = "rgba(59,130,246,.4)"; }
-    else if (percent >= 25) { gradient = "linear-gradient(135deg,#f59e0b,#fbbf24,#fcd34d)"; icon = "⚡"; status = t.doing; glowColor = "rgba(245,158,11,.4)"; }
-    else { gradient = "linear-gradient(135deg,#ef4444,#f87171,#fca5a5)"; icon = "🚀"; status = t.start; glowColor = "rgba(239,68,68,.4)"; }
+    const lang = s.language;
+    const dir = lang === "fa" ? "rtl" : "ltr";
+    const theme = getProgressTheme(percent);
+    view.el.style.setProperty("--puyan-accent", theme.accent);
+    view.el.style.setProperty("--puyan-accent-soft", theme.soft);
+    view.el.style.setProperty("--puyan-accent-border", theme.border);
+    view.el.setAttribute("data-cross-note", view.isCrossNote ? "true" : "false");
 
-    const header = view.el.createDiv("puyan-header");
-    const heading = header.createDiv("puyan-heading");
-    heading.createSpan({ cls: "puyan-icon", text: icon });
-    heading.createSpan({ cls: "puyan-title", text: status });
-    if (s.showCounter) header.createSpan({
-      cls: "puyan-counter",
-      text: displayDigits(done, s.outputDigits) + " / " + displayDigits(total, s.outputDigits) + " " + t.tasks
+    const header = view.el.createDiv({ cls: "puyan-header" });
+    const heading = header.createDiv({ cls: "puyan-heading" });
+
+    const iconBox = heading.createDiv({
+      cls: "puyan-icon",
+      attr: { "aria-hidden": "true" }
+    });
+    renderIcon(iconBox, getWidgetIconForPercent(percent));
+
+    const titleGroup = heading.createDiv({ cls: "puyan-title-group" });
+    const statusText = percent >= 100 ? t.complete
+      : percent >= 75 ? t.near
+      : percent >= 50 ? t.halfway
+      : percent >= 25 ? t.doing
+      : t.start;
+    titleGroup.createDiv({
+      cls: "puyan-title",
+      text: view.title || statusText
     });
 
-    const track = view.el.createDiv("puyan-track");
-    if (percent > 0) {
-      const glow = track.createDiv("puyan-glow");
-      glow.style.width = percent + "%";
-      glow.style.background = glowColor;
+    if (s.showNoteTitle) {
+      const noteSub = titleGroup.createDiv({ cls: "puyan-note-title" });
+      const subIcon = noteSub.createSpan({ cls: "puyan-note-title-icon" });
+      renderIcon(subIcon, "noteLink");
+      noteSub.createSpan({ text: file.basename });
     }
-    const fill = track.createDiv("puyan-fill");
-    fill.style.width = percent + "%";
-    fill.style.background = gradient;
-    const percentText = displayDigits(percent, s.outputDigits) + (s.language === "fa" ? "٪" : "%");
-    if (percent >= 20) fill.setText(percentText);
-    else track.createSpan({ cls: "puyan-outside-percent", text: percentText });
+
+    const actions = header.createDiv({ cls: "puyan-header-actions" });
 
     if (s.showCounter) {
-      const stats = view.el.createDiv("puyan-stats");
-      stats.createSpan({ text: displayDigits(done, s.outputDigits) + " " + t.completedTasks });
-      stats.createSpan({ text: displayDigits(total - done, s.outputDigits) + " " + t.remaining });
+      const counterText = `${toLocalizedDigits(done, lang)} / ${toLocalizedDigits(total, lang)}`;
+      actions.createDiv({ cls: "puyan-counter", text: counterText });
+    }
+
+    if (s.showOpenButton && view.isCrossNote) {
+      const openIconBtn = actions.createEl("button", {
+        cls: "puyan-open-icon-btn",
+        attr: {
+          type: "button",
+          title: `${t.openNoteTooltip}: ${file.basename}`,
+          "aria-label": `${t.openNoteTooltip}: ${file.basename}`
+        }
+      });
+      renderIcon(openIconBtn, dir === "rtl" ? "openExternalRtl" : "openExternalLtr");
+      openIconBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const newLeaf = e.ctrlKey || e.metaKey;
+        this.app.workspace.openLinkText(file.path, view.sourcePath, newLeaf);
+      });
+    }
+
+    const track = view.el.createDiv({ cls: "puyan-track" });
+    const glow = track.createDiv({ cls: "puyan-glow" });
+    glow.style.width = percent + "%";
+    glow.style.background = theme.glow;
+
+    const fill = track.createDiv({ cls: "puyan-fill" });
+    fill.style.width = percent + "%";
+    fill.style.background = theme.gradient;
+
+    const pctStr = toLocalizedDigits(percent, lang) + (lang === "fa" ? "٪" : "%");
+    if (percent >= 14) fill.setText(pctStr);
+    else track.createDiv({ cls: "puyan-outside-percent", text: pctStr });
+
+    if (s.showCounter) {
+      const statsRow = view.el.createDiv({ cls: "puyan-stats" });
+
+      const doneChip = statsRow.createDiv({ cls: "puyan-stat-item" });
+      const doneIcon = doneChip.createSpan({ cls: "puyan-stat-icon" });
+      renderIcon(doneIcon, "checkMini");
+      doneChip.createSpan({ text: `${t.completedTasks}: ${toLocalizedDigits(done, lang)}` });
+
+      const remChip = statsRow.createDiv({ cls: "puyan-stat-item" });
+      const remIcon = remChip.createSpan({ cls: "puyan-stat-icon" });
+      renderIcon(remIcon, "circleMini");
+      remChip.createSpan({ text: `${t.remaining}: ${toLocalizedDigits(total - done, lang)}` });
     }
 
     const shownStart = done > 0 ? (latest[startKey] || today) : null;
     const shownEnd = done === total ? (latest[endKey] || today) : null;
     const duration = shownStart && shownEnd ? this.durationInDays(shownStart, shownEnd) : null;
+
     if (percent === 100 && shownEnd) {
-      const completion = view.el.createDiv("puyan-completion");
-      completion.createSpan({ cls: "puyan-crown", text: "🏆" });
-      if (s.showEndDate) completion.createSpan({ cls: "puyan-completion-text", text: "✅ " + t.completedOn + " " + shownEnd });
+      const comp = view.el.createDiv({
+        cls: "puyan-completion",
+        attr: { title: lang === "fa" ? "کلیک برای پخش مجدد کاغذباران" : "Click to replay confetti" }
+      });
+
+      const crown = comp.createDiv({ cls: "puyan-crown" });
+      renderIcon(crown, "trophy");
+
+      comp.createDiv({ cls: "puyan-completion-text", text: t.completionMsg });
+
       if (s.showDuration && duration !== null) {
-        const durationText = duration <= 1 ? t.lessThanDay : displayDigits(duration, s.outputDigits) + " " + t.days;
-        completion.createSpan({ cls: "puyan-duration-pill", text: t.duration + " " + durationText });
+        const durationText = duration <= 1 ? t.lessThanDay : toLocalizedDigits(duration, lang) + " " + t.days;
+        comp.createDiv({
+          cls: "puyan-duration-pill",
+          text: `${t.duration} ${durationText}`
+        });
+      }
+
+      comp.addEventListener("click", () => {
+        if (!s.enableConfetti) return;
+        launchConfettiOnElement(view.el);
+        launchGlobalConfetti();
+      });
+
+      const transitionedTo100 =
+        (view.lastPercent !== null && view.lastPercent < 100) ||
+        (view.lastPercent === null && !view.hasCelebratedInitial100);
+
+      if (s.enableConfetti && transitionedTo100) {
+        view.hasCelebratedInitial100 = true;
+        setTimeout(() => {
+          launchConfettiOnElement(view.el);
+          launchGlobalConfetti();
+        }, 220);
       }
     } else if (shownStart && s.showStartDate) {
-      const info = view.el.createDiv("puyan-duration-info");
-      info.createSpan({ text: "⏳" });
+      const info = view.el.createDiv({ cls: "puyan-duration-info" });
+      const icon = info.createSpan({ cls: "puyan-duration-icon" });
+      renderIcon(icon, "clock");
       info.createSpan({ text: t.startedOn + " " + shownStart });
     }
 
-    if (s.showOpenButton) {
-      const openBtn = view.el.createEl("button", { cls: "puyan-open-btn", text: t.openNote });
-      openBtn.setAttribute("type", "button");
-      openBtn.onclick = (e) => { e.preventDefault(); this.app.workspace.openLinkText(file.path, view.sourcePath, false); };
-    }
+    view.lastPercent = percent;
   }
 
   durationInDays(start, end) {
@@ -1325,4 +1959,3 @@ module.exports = class PuyanPlugin extends Plugin {
     return Math.max(0, Math.round((b.getTime() - a.getTime()) / 86400000));
   }
 };
-/* nosourcemap */
