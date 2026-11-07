@@ -1,1961 +1,1208 @@
-const { Plugin, PluginSettingTab, Setting, Modal, Notice, MarkdownRenderChild } = require("obsidian");
+/* ============================================================
+   Puyan — Modern glass widget + What's new modal
+   ============================================================ */
 
-const DEFAULT_SETTINGS = {
-  language: "fa",
-  startField: "شروع",
-  endField: "پایان",
-  durationField: "مدت انجام",
-  progressField: "پیشرفت",
-  calendar: "jalali",
-  dateFormat: "numeric",
-  outputDigits: "fa",
-  saveProgress: true,
-  countSubtasks: true,
-  showCounter: true,
-  showStartDate: true,
-  showEndDate: true,
-  showDuration: true,
-  showNoteTitle: true,
-  showOpenButton: true,
-  enableConfetti: true,
-  lastSeenVersion: "",
-  savedChecklists: [
-    { id: "weekdays", name: "روزهای هفته", type: "fixed", items: ["شنبه","یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه"] },
-    { id: "steps10", name: "مراحل ده‌تایی", type: "step", interval: 10, dateStep: 1, template: "- [ ] {n}" },
-    { id: "stepsWithDates", name: "مراحل با تاریخ", type: "step", interval: 1, dateStep: 1, template: "- [ ] {date} — {n}" }
-  ]
-};
-
-const TEXT = {
-  fa: {
-    settings: "تنظیمات پویان", language: "زبان رابط کاربری", fa: "فارسی", en: "English",
-    startField: "فیلد تاریخ شروع", endField: "فیلد تاریخ پایان", durationField: "فیلد مدت انجام",
-    progressField: "فیلد درصد پیشرفت", calendar: "تقویم", jalali: "شمسی", gregorian: "میلادی",
-    dateFormat: "قالب تاریخ", numeric: "عددی", long: "نام ماه", iso: "ISO",
-    outputDigits: "اعداد نمایشی", persianDigits: "فارسی (۱۲۳)", latinDigits: "انگلیسی (123)",
-    saveProgress: "ذخیره درصد پیشرفت در Frontmatter", countSubtasks: "شمارش زیرتسک‌ها",
-    showCounter: "نمایش شمارنده تسک‌ها", showStartDate: "نمایش تاریخ شروع", showEndDate: "نمایش تاریخ پایان",
-    showDuration: "نمایش مدت انجام", showNoteTitle: "نمایش عنوان یادداشت", showOpenButton: "نمایش دکمهٔ بازکردن یادداشت",
-    enableConfetti: "جشن کاغذباران در ۱۰۰٪",
-    enableConfettiDesc: "پخش کاغذباران روی کل صفحهٔ ابسیدین هنگام رسیدن پیشرفت به صددرصد",
-    commandInsert: "درج ویجت پیشرفت", commandChecklist: "ساخت چک‌لیست از قالب (انتخاب دستی)",
-    commandChecklistPrefix: "ساخت چک‌لیست:",
-    modalTitle: "ساخت چک‌لیست", activity: "عنوان فعالیت", total: "مقدار کل",
-    totalDesc: "تعداد صفحات، فصل‌ها یا مراحل", interval: "فاصله مراحل", create: "ساخت چک‌لیست",
-    continueBtn: "ادامه", backBtn: "بازگشت",
-    invalid: "اطلاعات واردشده معتبر نیست.", noTasks: "هیچ تسکی برای نمایش پیشرفت وجود ندارد",
-    complete: "کامل شد!", near: "نزدیک به اتمام", halfway: "نیمه‌راه", doing: "در حال انجام", start: "شروع",
-    tasks: "تسک", completedTasks: "تسک انجام‌شده", remaining: "تسک باقی‌مانده",
-    completedOn: "تکمیل شده در:", duration: "مدت انجام:", days: "روز", lessThanDay: "کمتر از یک روز",
-    startedOn: "شروع:", migrationDone: "تاریخ‌های یادداشت‌ها به قالب جدید تبدیل شد.",
-    migrationPartial: "تبدیل تاریخ‌ها انجام شد؛ بعضی تاریخ‌های ناشناخته بدون تغییر ماندند.",
-    migrationNone: "تنظیمات تاریخ تغییر کرد؛ تاریخ قابل تبدیل دیگری پیدا نشد.",
-    widgetTarget: "یادداشت منبع", checklistType: "نوع چک‌لیست پیش‌فرض",
-    numericListType: "عددگذاری مرحله‌ای", fixedListType: "فهرست ثابت",
-    checklistTemplate: "قالب هر مرحله",
-    templateDesc: "با دکمه‌ها یا تایپ مستقیم، قالب را بسازید. {n} شماره، {total} کل، {title} عنوان، {date} تاریخ.",
-    checklistItems: "موارد فهرست (هر مورد در یک خط)",
-    listDesc: "برای نمونه روزهای هفته را هرکدام در یک خط بنویسید.",
-    savedLists: "قالب‌های ذخیره‌شده چک‌لیست",
-    addList: "افزودن قالب", editList: "ویرایش قالب", removeList: "حذف",
-    listName: "نام قالب", listType: "نوع قالب", numericList: "مرحله‌ای", listItemsType: "ثابت",
-    itemsLabel: "موارد (با ویرگول جدا کنید)", itemsDesc: "مثلاً: مطالعه، تمرین، مرور",
-    totalLabel: "مقدار کل", intervalLabel: "فاصله مراحل", templateLabel: "قالب هر مرحله",
-    defaultIntervalLabel: "فاصله مراحل پیش‌فرض", defaultIntervalDesc: "هنگام ساخت چک‌لیست قابل تغییر است.",
-    intervalDesc: "فاصله بین مراحل (مثلاً ۱۰ یا ۲۵).",
-    chooseList: "انتخاب چک‌لیست", startDate: "تاریخ شروع",
-    startDateDesc: "برای انتخاب، روی تقویم کلیک کنید یا دستی وارد کنید.",
-    pickDate: "انتخاب تاریخ", noSavedLists: "هنوز قالبی ذخیره نشده است.",
-    listEmpty: "موارد این قالب خالی است.",
-    templateHelp: "راهنمای قالب هر مرحله",
-    templateHelpBody: "از {n} برای شماره مرحله، {total} برای مقدار کل، {title} برای عنوان فعالیت و {date} برای تاریخ همان مرحله استفاده کنید.",
-    widgetSyntax: "برای نمایش ویجت از یادداشت دیگر، در کدبلاک بنویسید: note: مسیر/یادداشت.md",
-    targetNotFound: "یادداشت مقصد پیدا نشد: ",
-    calendarPluginMissing: "پلاگین «تقویم پارسی» (persian-calendar) نصب یا فعال نیست. تبدیل تاریخ شمسی در دسترس نخواهد بود.",
-    widgetBefore: "ویجت پیشرفت را قبل از چک‌لیست قرار بده",
-    dateStepLabel: "ضریب تاریخ", dateStepDesc: "هر چند روز یکبار تاریخ ثبت شود (۱ = هر روز)",
-    openNote: "بازکردن یادداشت", openNoteTooltip: "باز کردن یادداشت مرجع",
-    today: "امروز", closeBtn: "بستن",
-    tplTokensLabel: "توکن‌ها:", tplTokenN: "شماره مرحله", tplTokenTotal: "مقدار کل",
-    tplTokenTitle: "عنوان فعالیت", tplTokenDate: "تاریخ مرحله", tplTextLabel: "متن:",
-    tplTextCheckbox: "چک‌باکس", tplTextOf: "از", tplTextNewline: "خط جدید",
-    tplPresetsLabel: "آماده:", tplPresetSimple: "ساده", tplPresetWithTitle: "با عنوان",
-    tplPresetWithDate: "با تاریخ", tplPresetBare: "فقط شماره",
-    tplPreviewLabel: "پیش‌نمایش:", tplSampleTitle: "نمونه",
-    completionMsg: "تبریک! تمامی موارد با موفقیت تکمیل شد",
-    whatsNewTooltip: "تغییرات جدید",
-    whatsNewTitle: "تغییرات جدید",
-    whatsNewFirstInstall: "نصب با موفقیت انجام شد. خوش آمدید!",
-    whatsNewSince: (v) => `از نسخهٔ ${v} به بعد`,
-    whatsNewExample: "مثال:",
-    whatsNewStart: "شروع کنید",
-    whatsNewFull: "تغییرات کامل",
-    supportAriaLabel: "ارتباط با ما و حمایت", supportHeading: "همراه ما باشید",
-    supportIntro: "آموزش‌ها، تازه‌ها و نکته‌های کاربردی ابسیدین را در کانال‌های ما دنبال کنید.",
-    supportChannelJoin: "عضویت در کانال",
-    supportDonationTitle: "با همراهی شما، ادامه می‌دهیم",
-    supportDonationDesc: "اگر این افزونه برایتان مفید بوده، می‌توانید از ادامهٔ توسعهٔ آن حمایت کنید.",
-    supportDonateBtn: "حمایت مالی", supportDonateAria: "حمایت مالی از سازنده در ریمیت"
-  },
-  en: {
-    settings: "Puyan settings", language: "Interface language", fa: "فارسی", en: "English",
-    startField: "Start date property", endField: "Completion date property", durationField: "Duration property",
-    progressField: "Progress property", calendar: "Calendar", jalali: "Jalali", gregorian: "Gregorian",
-    dateFormat: "Date format", numeric: "Numeric", long: "Month name", iso: "ISO",
-    outputDigits: "Displayed digits", persianDigits: "Persian (۱۲۳)", latinDigits: "Latin (123)",
-    saveProgress: "Save progress percentage to Frontmatter", countSubtasks: "Count nested tasks",
-    showCounter: "Show task counter", showStartDate: "Show start date", showEndDate: "Show completion date",
-    showDuration: "Show duration", showNoteTitle: "Show note title", showOpenButton: "Show 'open note' button",
-    enableConfetti: "Confetti celebration at 100%",
-    enableConfettiDesc: "Play paper confetti across the Obsidian window when progress reaches 100%",
-    commandInsert: "Insert progress widget", commandChecklist: "Create checklist from template (pick manually)",
-    commandChecklistPrefix: "Create checklist:",
-    modalTitle: "Create checklist", activity: "Activity title", total: "Total amount",
-    totalDesc: "Number of pages, chapters, or steps", interval: "Step interval", create: "Create checklist",
-    continueBtn: "Continue", backBtn: "Back",
-    invalid: "Please enter valid values.", noTasks: "No tasks found to calculate progress",
-    complete: "Completed!", near: "Almost there", halfway: "Halfway", doing: "In progress", start: "Getting started",
-    tasks: "tasks", completedTasks: "tasks completed", remaining: "remaining",
-    completedOn: "Completed on:", duration: "Duration:", days: "days", lessThanDay: "Less than a day",
-    startedOn: "Started:", migrationDone: "Dates in your notes were converted to the new format.",
-    migrationPartial: "Date conversion finished; some unrecognized dates were left unchanged.",
-    migrationNone: "Date settings changed; no convertible dates were found.",
-    widgetTarget: "Source note", checklistType: "Default checklist type",
-    numericListType: "Numbered steps", fixedListType: "Fixed list",
-    checklistTemplate: "Step line template",
-    templateDesc: "Use the buttons or type directly. {n} number, {total} total, {title} title, {date} date.",
-    checklistItems: "List items (one per line)",
-    listDesc: "For example, enter weekdays on separate lines.",
-    savedLists: "Saved checklist templates",
-    addList: "Add template", editList: "Edit template", removeList: "Remove",
-    listName: "Template name", listType: "Template type", numericList: "Step-based", listItemsType: "Fixed list",
-    itemsLabel: "Items (separate with commas)", itemsDesc: "For example: Read, Practice, Review",
-    totalLabel: "Total amount", intervalLabel: "Step interval", templateLabel: "Step template",
-    defaultIntervalLabel: "Default step interval", defaultIntervalDesc: "Can be changed when creating a checklist.",
-    intervalDesc: "Gap between steps (e.g. 10 or 25).",
-    chooseList: "Choose a checklist", startDate: "Start date",
-    startDateDesc: "Click the calendar icon to pick, or type manually.",
-    pickDate: "Pick date", noSavedLists: "No saved templates yet.",
-    listEmpty: "This template has no items.",
-    templateHelp: "Step template guide",
-    templateHelpBody: "Use {n} for step number, {total} for total, {title} for activity title, and {date} for that step's date.",
-    widgetSyntax: "To show a widget from another note, add this inside the code block: note: path/to/note.md",
-    targetNotFound: "Target note not found: ",
-    calendarPluginMissing: "The 'persian-calendar' plugin is not installed or enabled. Jalali date conversion will be unavailable.",
-    widgetBefore: "Insert progress widget before the checklist",
-    dateStepLabel: "Date step", dateStepDesc: "How many days between each item's date (1 = every day)",
-    openNote: "Open note", openNoteTooltip: "Open source note",
-    today: "Today", closeBtn: "Close",
-    tplTokensLabel: "Tokens:", tplTokenN: "Step number", tplTokenTotal: "Total",
-    tplTokenTitle: "Activity title", tplTokenDate: "Step date", tplTextLabel: "Text:",
-    tplTextCheckbox: "Checkbox", tplTextOf: "of", tplTextNewline: "Newline",
-    tplPresetsLabel: "Presets:", tplPresetSimple: "Simple", tplPresetWithTitle: "With title",
-    tplPresetWithDate: "With date", tplPresetBare: "Bare number",
-    tplPreviewLabel: "Preview:", tplSampleTitle: "Sample",
-    completionMsg: "Congratulations! All tasks are completed",
-    whatsNewTooltip: "What's new",
-    whatsNewTitle: "What's new",
-    whatsNewFirstInstall: "Installation complete. Welcome!",
-    whatsNewSince: (v) => `Since version ${v}`,
-    whatsNewExample: "Example:",
-    whatsNewStart: "Get started",
-    whatsNewFull: "Full changelog",
-    supportAriaLabel: "Connect and support", supportHeading: "Stay connected",
-    supportIntro: "Follow our channels for Obsidian tutorials, updates and practical tips.",
-    supportChannelJoin: "Join channel",
-    supportDonationTitle: "Help this project grow",
-    supportDonationDesc: "If this plugin helps you, consider supporting its continued development.",
-    supportDonateBtn: "Donate", supportDonateAria: "Support the creator on Reymit"
-  }
-};
+:root {
+  --puyan-radius-lg: 22px;
+  --puyan-radius-md: 14px;
+  --puyan-radius-sm: 10px;
+  --puyan-transition: 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  --puyan-bar-transition: 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
 
 /* ============================================================
-   Changelog — shown in the "What's new" modal
+   Widget container
    ============================================================ */
-const CHANGELOG = {
-  "1.1.0": {
-    title: {
-      fa: "✨ پویان ۱.۱.۰",
-      en: "✨ Puyan 1.1.0"
-    },
-    intro: {
-      fa: "نسخهٔ جدید با ظاهر تازه و کاغذباران رسید!",
-      en: "A fresh look and confetti are here!"
-    },
-    items: {
-      fa: [
-        {
-          icon: "🎨",
-          text: "ویجت با ظاهر شیشه‌ای، نوار پیشرفت شیمری و آیکون‌های SVG بازطراحی شد.",
-          example: {
-            lang: "markdown",
-            code: "```puyan\nnote: Projects/Book.md\ntitle: مطالعه کتاب عادت‌های اتمی\n```"
-          }
-        },
-        {
-          icon: "🚀",
-          text: "آیکون ویجت با درصد پیشرفت تغییر می‌کند: راکت → صاعقه → ماه → شعله → جام."
-        },
-        {
-          icon: "🔗",
-          text: "دکمهٔ بازکردن یادداشت به یک آیکون کوچک تبدیل شد و فقط وقتی ویجت در یادداشت دیگری است نمایش داده می‌شود."
-        },
-        {
-          icon: "✏️",
-          text: "می‌توانید عنوان دلخواه را داخل کدبلاک ویجت با کلید title تعریف کنید."
-        },
-        {
-          icon: "🎉",
-          text: "هنگام رسیدن به ۱۰۰٪ کاغذباران هم داخل ویجت و هم روی کل صفحهٔ ابسیدین پخش می‌شود."
-        },
-        {
-          icon: "🧹",
-          text: "اگر پیشرفت به صفر برگردد، فیلد «پیشرفت» از Frontmatter حذف می‌شود."
-        }
-      ],
-      en: [
-        {
-          icon: "🎨",
-          text: "Redesigned widget with glassmorphism, animated shimmer bar, and SVG icons.",
-          example: {
-            lang: "markdown",
-            code: "```puyan\nnote: Projects/Book.md\ntitle: Read Atomic Habits\n```"
-          }
-        },
-        {
-          icon: "🚀",
-          text: "The widget icon changes with progress: rocket → lightning → moon → flame → trophy."
-        },
-        {
-          icon: "🔗",
-          text: "The open-note button is now a compact icon, shown only when the widget lives in a different note."
-        },
-        {
-          icon: "✏️",
-          text: "Set a custom title inside the widget code block using the title key."
-        },
-        {
-          icon: "🎉",
-          text: "At 100%, confetti bursts inside the widget and across the whole Obsidian window."
-        },
-        {
-          icon: "🧹",
-          text: "When progress drops back to 0%, the progress property is removed from Frontmatter."
-        }
-      ]
-    }
-  }
-};
+.puyan {
+  position: relative;
+  direction: rtl;
+  margin: 18px 0;
+  padding: 20px 22px;
+  background: linear-gradient(
+    145deg,
+    var(--background-primary) 0%,
+    var(--background-secondary) 100%
+  );
+  border-radius: var(--puyan-radius-lg);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow:
+    0 12px 36px -8px rgba(0, 0, 0, 0.08),
+    0 4px 12px -2px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: transform var(--puyan-transition), box-shadow var(--puyan-transition), border-color var(--puyan-transition);
+  font-family: var(--font-interface);
+  color: var(--text-normal);
+  overflow: hidden;
+  isolation: isolate;
+}
 
-const PERSIAN_MONTHS = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
-const ENGLISH_MONTHS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
-const JALALI_MONTHS_EN = ["Farvardin","Ordibehesht","Khordad","Tir","Mordad","Shahrivar","Mehr","Aban","Azar","Dey","Bahman","Esfand"];
+.theme-dark .puyan {
+  background: linear-gradient(
+    145deg,
+    rgba(30, 34, 45, 0.82) 0%,
+    rgba(20, 23, 31, 0.92) 100%
+  );
+  box-shadow:
+    0 16px 40px -10px rgba(0, 0, 0, 0.42),
+    0 4px 14px -2px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.puyan::before {
+  content: "";
+  position: absolute;
+  top: -60px;
+  inset-inline-start: -60px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(
+    circle,
+    var(--puyan-accent-soft, rgba(99, 102, 241, 0.14)) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.5s ease;
+}
+
+.puyan:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--interactive-accent) 38%, var(--background-modifier-border));
+  box-shadow:
+    0 18px 42px -10px rgba(0, 0, 0, 0.12),
+    0 6px 16px -4px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.puyan.is-complete {
+  border-color: rgba(16, 185, 129, 0.45);
+}
 
 /* ============================================================
-   SVG Icon Library — built as real DOM nodes
+   Confetti canvases
    ============================================================ */
-const SVG_NS = "http://www.w3.org/2000/svg";
-
-function buildSvg(children, opts = {}) {
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", opts.viewBox || "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", opts.strokeWidth || "2");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("xmlns", SVG_NS);
-  for (const spec of children) {
-    const node = document.createElementNS(SVG_NS, spec.tag);
-    for (const k in (spec.attrs || {})) node.setAttribute(k, spec.attrs[k]);
-    svg.appendChild(node);
-  }
-  return svg;
+.puyan-confetti-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 25;
 }
 
-const ICON_BUILDERS = {
-  rocket: () => buildSvg([
-    { tag: "path", attrs: { d: "M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" } },
-    { tag: "path", attrs: { d: "m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" } },
-    { tag: "path", attrs: { d: "M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" } },
-    { tag: "path", attrs: { d: "M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" } }
-  ]),
-  target: () => buildSvg([
-    { tag: "circle", attrs: { cx: "12", cy: "12", r: "10" } },
-    { tag: "circle", attrs: { cx: "12", cy: "12", r: "6" } },
-    { tag: "circle", attrs: { cx: "12", cy: "12", r: "2" } }
-  ]),
-  book: () => buildSvg([
-    { tag: "path", attrs: { d: "M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" } }
-  ]),
-  flame: () => buildSvg([
-    { tag: "path", attrs: { d: "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" } }
-  ]),
-  trophy: () => buildSvg([
-    { tag: "path", attrs: { d: "M6 9H4.5a2.5 2.5 0 0 1 0-5H6" } },
-    { tag: "path", attrs: { d: "M18 9h1.5a2.5 2.5 0 0 0 0-5H18" } },
-    { tag: "path", attrs: { d: "M4 22h16" } },
-    { tag: "path", attrs: { d: "M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" } },
-    { tag: "path", attrs: { d: "M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" } },
-    { tag: "path", attrs: { d: "M18 2H6v7a6 6 0 0 0 12 0V2Z" } }
-  ]),
-  lightning: () => buildSvg([
-    { tag: "polygon", attrs: { points: "13 2 3 14 12 14 11 22 21 10 12 10 13 2" } }
-  ]),
-  moon: () => buildSvg([
-    { tag: "path", attrs: { d: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" } }
-  ]),
-  noteLink: () => buildSvg([
-    { tag: "path", attrs: { d: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" } },
-    { tag: "polyline", attrs: { points: "14 2 14 8 20 8" } }
-  ], { strokeWidth: "2" }),
-  openExternalRtl: () => buildSvg([
-    { tag: "path", attrs: { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" } },
-    { tag: "polyline", attrs: { points: "9 3 3 3 3 9" } },
-    { tag: "line", attrs: { x1: "14", y1: "14", x2: "3", y2: "3" } }
-  ], { strokeWidth: "2" }),
-  openExternalLtr: () => buildSvg([
-    { tag: "path", attrs: { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" } },
-    { tag: "polyline", attrs: { points: "15 3 21 3 21 9" } },
-    { tag: "line", attrs: { x1: "10", y1: "14", x2: "21", y2: "3" } }
-  ], { strokeWidth: "2" }),
-  checkMini: () => buildSvg([
-    { tag: "polyline", attrs: { points: "20 6 9 17 4 12" } }
-  ], { strokeWidth: "2.2" }),
-  circleMini: () => buildSvg([
-    { tag: "circle", attrs: { cx: "12", cy: "12", r: "9" } }
-  ], { strokeWidth: "2" }),
-  clock: () => buildSvg([
-    { tag: "circle", attrs: { cx: "12", cy: "12", r: "10" } },
-    { tag: "polyline", attrs: { points: "12 6 12 12 16 14" } }
-  ], { strokeWidth: "2" }),
-  sparkles: () => buildSvg([
-    { tag: "path", attrs: { d: "m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" } },
-    { tag: "path", attrs: { d: "M5 3v4" } },
-    { tag: "path", attrs: { d: "M19 17v4" } },
-    { tag: "path", attrs: { d: "M3 5h4" } },
-    { tag: "path", attrs: { d: "M17 19h4" } }
-  ], { strokeWidth: "2" })
-};
-
-/* ---------------- DOM helpers ---------------- */
-function el(parent, tag, cls, text) {
-  const node = parent.createEl(tag);
-  if (cls) node.className = cls;
-  if (text !== undefined && text !== null) node.textContent = text;
-  return node;
-}
-function link(parent, cls, href, ariaLabel) {
-  const a = parent.createEl("a");
-  if (cls) a.className = cls;
-  a.href = href;
-  a.setAttribute("target", "_blank");
-  a.setAttribute("rel", "noopener noreferrer");
-  if (ariaLabel) a.setAttribute("aria-label", ariaLabel);
-  return a;
-}
-function makeSvg(parent, viewBox, children) {
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", viewBox);
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "1.8");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("aria-hidden", "true");
-  for (const [tag, attrs] of children) {
-    const node = document.createElementNS(SVG_NS, tag);
-    for (const k in attrs) node.setAttribute(k, attrs[k]);
-    svg.appendChild(node);
-  }
-  parent.appendChild(svg);
-  return svg;
-}
-function logo(parent, type) {
-  if (type === "bale") return makeSvg(parent, "0 0 24 24", [
-    ["path", { d: "M4 5h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8l-4 4V7a2 2 0 0 1 2-2z" }],
-    ["path", { d: "M8 10h8M8 14h5" }]
-  ]);
-  if (type === "telegram") return makeSvg(parent, "0 0 24 24", [
-    ["path", { d: "M22 3 11 14" }],
-    ["path", { d: "M22 3 15 21l-4-7-7-4 18-7z" }]
-  ]);
-  if (type === "youtube") return makeSvg(parent, "0 0 24 24", [
-    ["rect", { x: "2", y: "5", width: "20", height: "14", rx: "3.5" }],
-    ["path", { d: "m10 9 5 3-5 3V9z", fill: "currentColor", stroke: "none" }]
-  ]);
-  if (type === "heart") return makeSvg(parent, "0 0 24 24", [
-    ["path", { d: "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" }]
-  ]);
-  return null;
-}
-function calendarIcon(parent) {
-  const svg = makeSvg(parent, "0 0 24 24", [
-    ["rect", { x: "3", y: "5", width: "18", height: "16", rx: "2.5" }],
-    ["path", { d: "M3 10h18" }],
-    ["path", { d: "M8 3v4M16 3v4" }]
-  ]);
-  svg.setAttribute("width", "18");
-  svg.setAttribute("height", "18");
-  svg.setAttribute("class", "puyan-calendar-icon");
-  return svg;
+.puyan-global-confetti {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
 }
 
-/* ---------------- SVG render helpers (DOM-based) ---------------- */
-function renderIcon(containerEl, key) {
-  containerEl.empty();
-  const builder = ICON_BUILDERS[key];
-  if (builder) {
-    const svg = builder();
-    containerEl.appendChild(svg);
-    return true;
-  }
-  return false;
+/* ============================================================
+   Header, icon, title, actions
+   ============================================================ */
+.puyan-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-function getWidgetIconForPercent(percent) {
-  if (percent >= 100) return "trophy";
-  if (percent >= 75) return "flame";
-  if (percent >= 50) return "moon";
-  if (percent >= 25) return "lightning";
-  return "rocket";
+.puyan-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
 }
 
-function getProgressTheme(percent) {
-  if (percent >= 100) {
-    return {
-      gradient: "linear-gradient(90deg, #10b981 0%, #059669 50%, #34d399 100%)",
-      accent: "#10b981",
-      soft: "rgba(16, 185, 129, 0.16)",
-      border: "rgba(16, 185, 129, 0.34)",
-      glow: "rgba(16,185,129,.45)"
-    };
-  }
-  if (percent >= 75) {
-    return {
-      gradient: "linear-gradient(90deg, #8b5cf6 0%, #a78bfa 50%, #c4b5fd 100%)",
-      accent: "#8b5cf6",
-      soft: "rgba(139, 92, 246, 0.16)",
-      border: "rgba(139, 92, 246, 0.32)",
-      glow: "rgba(139,92,246,.45)"
-    };
-  }
-  if (percent >= 50) {
-    return {
-      gradient: "linear-gradient(90deg, #3b82f6 0%, #60a5fa 50%, #93c5fd 100%)",
-      accent: "#3b82f6",
-      soft: "rgba(59, 130, 246, 0.16)",
-      border: "rgba(59, 130, 246, 0.32)",
-      glow: "rgba(59,130,246,.45)"
-    };
-  }
-  if (percent >= 25) {
-    return {
-      gradient: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%)",
-      accent: "#f59e0b",
-      soft: "rgba(245, 158, 11, 0.16)",
-      border: "rgba(245, 158, 11, 0.32)",
-      glow: "rgba(245,158,11,.45)"
-    };
-  }
-  return {
-    gradient: "linear-gradient(90deg, #ef4444 0%, #f87171 50%, #fca5a5 100%)",
-    accent: "#ef4444",
-    soft: "rgba(239, 68, 68, 0.16)",
-    border: "rgba(239, 68, 68, 0.32)",
-    glow: "rgba(239,68,68,.45)"
-  };
+.puyan-icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    var(--puyan-accent-soft, rgba(99, 102, 241, 0.15)),
+    rgba(99, 102, 241, 0.04)
+  );
+  border: 1px solid var(--puyan-accent-border, rgba(99, 102, 241, 0.25));
+  color: var(--puyan-accent, var(--interactive-accent));
+  font-size: 1.45em;
+  line-height: 1;
+  user-select: none;
+  transition: transform 0.22s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.06);
 }
 
-/* ---------------- Confetti Engines ---------------- */
-function launchConfettiOnElement(widgetEl) {
-  if (!widgetEl || !widgetEl.isConnected) return;
-  const existing = widgetEl.querySelector(".puyan-confetti-canvas");
-  if (existing) existing.remove();
-
-  const canvas = document.createElement("canvas");
-  canvas.className = "puyan-confetti-canvas";
-  widgetEl.appendChild(canvas);
-
-  const rect = widgetEl.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  const width = Math.max(rect.width, 300);
-  const height = Math.max(rect.height, 140);
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) { canvas.remove(); return; }
-  ctx.scale(dpr, dpr);
-
-  const colors = ["#10b981","#34d399","#6366f1","#8b5cf6","#f59e0b","#ec4899","#06b6d4","#f43f5e","#eab308"];
-  const particles = [];
-  const count = 75;
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.random() * Math.PI) + Math.PI;
-    const speed = 2.5 + Math.random() * 5.5;
-    particles.push({
-      x: width * (0.15 + Math.random() * 0.7),
-      y: height * 0.65,
-      vx: Math.cos(angle) * speed * (Math.random() > 0.5 ? 1 : -1),
-      vy: -Math.abs(Math.sin(angle) * speed) - (1.5 + Math.random() * 3),
-      w: 5 + Math.random() * 6,
-      h: 4 + Math.random() * 4,
-      color: colors[i % colors.length],
-      rotation: Math.random() * 360,
-      rotationSpeed: (Math.random() - 0.5) * 11,
-      tiltAngle: Math.random() * Math.PI,
-      tiltSpeed: 0.08 + Math.random() * 0.14,
-      opacity: 1,
-      gravity: 0.13 + Math.random() * 0.06,
-      drag: 0.985
-    });
-  }
-
-  let frame = 0;
-  const maxFrames = 170;
-  function animate() {
-    frame++;
-    ctx.clearRect(0, 0, width, height);
-    let active = 0;
-    for (const p of particles) {
-      p.vx *= p.drag;
-      p.vy = p.vy * p.drag + p.gravity;
-      p.x += p.vx + Math.sin(p.tiltAngle) * 0.4;
-      p.y += p.vy;
-      p.rotation += p.rotationSpeed;
-      p.tiltAngle += p.tiltSpeed;
-      if (frame > maxFrames * 0.65) p.opacity = Math.max(0, p.opacity - 0.025);
-      if (p.y < height + 20 && p.opacity > 0.02) {
-        active++;
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate((p.rotation * Math.PI) / 180);
-        ctx.scale(Math.cos(p.tiltAngle), 1);
-        ctx.globalAlpha = p.opacity;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-        ctx.restore();
-      }
-    }
-    if (active > 0 && frame < maxFrames) requestAnimationFrame(animate);
-    else canvas.remove();
-  }
-  requestAnimationFrame(animate);
+.puyan-icon svg {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  stroke-width: 2;
+  display: block;
+  flex-shrink: 0;
+  color: inherit;
 }
 
-function launchGlobalConfetti() {
-  const existing = document.querySelector(".puyan-global-confetti");
-  if (existing) existing.remove();
-
-  const canvas = document.createElement("canvas");
-  canvas.className = "puyan-global-confetti";
-  document.body.appendChild(canvas);
-
-  const dpr = window.devicePixelRatio || 1;
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
-  canvas.style.width = width + "px";
-  canvas.style.height = height + "px";
-  const ctx = canvas.getContext("2d");
-  if (!ctx) { canvas.remove(); return; }
-  ctx.scale(dpr, dpr);
-
-  const colors = ["#10b981","#34d399","#6366f1","#8b5cf6","#f59e0b","#ec4899","#06b6d4","#f43f5e","#eab308"];
-  const particles = [];
-  const count = 180;
-  for (let i = 0; i < count; i++) {
-    const fromLeft = Math.random() > 0.5;
-    const originX = fromLeft ? -20 : width + 20;
-    const originY = height * (0.3 + Math.random() * 0.4);
-    const angle = fromLeft
-      ? (-Math.PI / 3) - Math.random() * (Math.PI / 6)
-      : (-2 * Math.PI / 3) + Math.random() * (Math.PI / 6);
-    const speed = 9 + Math.random() * 8;
-    particles.push({
-      x: originX,
-      y: originY,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - (2 + Math.random() * 3),
-      w: 6 + Math.random() * 7,
-      h: 5 + Math.random() * 5,
-      color: colors[i % colors.length],
-      rotation: Math.random() * 360,
-      rotationSpeed: (Math.random() - 0.5) * 14,
-      tiltAngle: Math.random() * Math.PI,
-      tiltSpeed: 0.08 + Math.random() * 0.16,
-      opacity: 1,
-      gravity: 0.18 + Math.random() * 0.08,
-      drag: 0.99
-    });
-  }
-
-  let frame = 0;
-  const maxFrames = 220;
-  function animate() {
-    frame++;
-    ctx.clearRect(0, 0, width, height);
-    let active = 0;
-    for (const p of particles) {
-      p.vx *= p.drag;
-      p.vy = p.vy * p.drag + p.gravity;
-      p.x += p.vx + Math.sin(p.tiltAngle) * 0.5;
-      p.y += p.vy;
-      p.rotation += p.rotationSpeed;
-      p.tiltAngle += p.tiltSpeed;
-      if (frame > maxFrames * 0.6) p.opacity = Math.max(0, p.opacity - 0.02);
-      if (p.y < height + 40 && p.opacity > 0.02) {
-        active++;
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate((p.rotation * Math.PI) / 180);
-        ctx.scale(Math.cos(p.tiltAngle), 1);
-        ctx.globalAlpha = p.opacity;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-        ctx.restore();
-      }
-    }
-    if (active > 0 && frame < maxFrames) requestAnimationFrame(animate);
-    else canvas.remove();
-  }
-  requestAnimationFrame(animate);
+.puyan-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
-/* ---------------- digit helpers ---------------- */
-function normalizeDigits(value) {
-  return String(value)
-    .replace(/[۰-۹]/g, d => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
-    .replace(/[٠-٩]/g, d => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
-}
-function displayDigits(value, mode) {
-  const s = String(value);
-  return mode === "fa" ? s.replace(/[0-9]/g, d => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]) : s;
-}
-function toLocalizedDigits(val, lang) {
-  return displayDigits(val, lang === "fa" ? "fa" : "en");
-}
-function todayLocal() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+.puyan-title {
+  font-size: 1.08em;
+  font-weight: 700;
+  color: var(--text-normal);
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
-/* ---------------- persian-calendar bridge ---------------- */
-class CalendarApi {
-  constructor(app) { this.app = app; this.pcApi = null; this._resolve(); }
-  _resolve() {
-    try {
-      const plugin = this.app.plugins?.getPlugin?.("persian-calendar");
-      this.pcApi = plugin?.api || null;
-    } catch (_) { this.pcApi = null; }
-    return this.pcApi;
-  }
-  get available() { return !!(this.pcApi || this._resolve()); }
-  toEnNumber(v) {
-    if (this.available && typeof this.pcApi.toEnNumber === "function") return this.pcApi.toEnNumber(String(v));
-    return normalizeDigits(v);
-  }
-  toFaNumber(v) {
-    if (this.available && typeof this.pcApi.toFaNumber === "function") return this.pcApi.toFaNumber(String(v));
-    return displayDigits(v, "fa");
-  }
-  gregorianToJalali(date) {
-    if (!this.available) return null;
-    try {
-      const g = date instanceof Date ? date : new Date(date);
-      if (!(g instanceof Date) || isNaN(g.getTime())) return null;
-      const r = this.pcApi.gregorianToJalali(g.getFullYear(), g.getMonth() + 1, g.getDate());
-      return (r && Number.isFinite(r.jy) && Number.isFinite(r.jm) && Number.isFinite(r.jd)) ? r : null;
-    } catch (_) { return null; }
-  }
-  jalaliToDate(jy, jm, jd) {
-    if (!this.available) return null;
-    try {
-      const d = this.pcApi.jalaliToDate(jy, jm, jd);
-      if (!(d instanceof Date) || isNaN(d.getTime())) return null;
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
-    } catch (_) { return null; }
-  }
-  jalaliMonthName(m, lang) {
-    if (this.available && typeof this.pcApi.jalaliMonthName === "function") {
-      try { return this.pcApi.jalaliMonthName(m, lang); } catch (_) {}
-    }
-    if (lang === "en") return JALALI_MONTHS_EN[m - 1] || "";
-    return PERSIAN_MONTHS[m - 1] || "";
-  }
+.puyan-note-title {
+  font-size: 0.78em;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ---------------- date parsing ---------------- */
-function parseDateValue(value, calendar, calApi) {
-  if (value === null || value === undefined || value === "") return null;
-  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
-  const s = calApi.toEnNumber(String(value)).trim();
-  let m = s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
-  if (m) {
-    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
-    return calendar === "jalali" ? calApi.jalaliToDate(y, mo, d) : validGregorianLocal(y, mo, d);
-  }
-  m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  if (m) {
-    const a = Number(m[1]), b = Number(m[2]), y = Number(m[3]);
-    if (calendar === "jalali") return calApi.jalaliToDate(y, b, a);
-    return validGregorianLocal(y, b, a);
-  }
-  m = s.match(/^(\d{1,2})\s+(.+?)\s+(\d{4})$/i);
-  if (m) {
-    const d = Number(m[1]), monthText = m[2].trim().toLowerCase(), y = Number(m[3]);
-    if (calendar === "jalali") {
-      let pm = PERSIAN_MONTHS.findIndex(x => x === monthText) + 1;
-      if (pm <= 0) pm = JALALI_MONTHS_EN.findIndex(x => x.toLowerCase() === monthText) + 1;
-      if (pm > 0) return calApi.jalaliToDate(y, pm, d);
-    } else {
-      const em = ENGLISH_MONTHS.findIndex(x => x.startsWith(monthText));
-      if (em >= 0) return validGregorianLocal(y, em + 1, d);
-    }
-  }
-  if (calendar === "gregorian") {
-    const parsed = Date.parse(s);
-    if (Number.isFinite(parsed)) {
-      const date = new Date(parsed);
-      return validGregorianLocal(date.getFullYear(), date.getMonth() + 1, date.getDate());
-    }
-  }
-  return null;
-}
-function validGregorianLocal(y, m, d) {
-  if (!Number.isInteger(y) || y < 1 || y > 9999) return null;
-  if (!Number.isInteger(m) || m < 1 || m > 12) return null;
-  if (!Number.isInteger(d) || d < 1 || d > 31) return null;
-  const date = new Date(y, m - 1, d, 12, 0, 0, 0);
-  return (date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d) ? date : null;
+.puyan-note-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
 }
 
-/* ---------------- date formatting ---------------- */
-function formatDate(date, settings, calApi) {
-  if (!date) return "";
-  const d = date instanceof Date ? date : new Date(date);
-  if (isNaN(d.getTime())) return "";
-  if (settings.calendar === "jalali") {
-    const p = calApi.gregorianToJalali(d);
-    if (!p) return "";
-    const lang = settings.language === "fa" ? "fa" : "en";
-    if (settings.dateFormat === "iso") {
-      return displayDigits(String(p.jy) + "-" + String(p.jm).padStart(2, "0") + "-" + String(p.jd).padStart(2, "0"), settings.outputDigits);
-    }
-    if (settings.dateFormat === "long") {
-      const month = calApi.jalaliMonthName(p.jm, lang);
-      return displayDigits(p.jd + " " + month + " " + p.jy, settings.outputDigits);
-    }
-    return displayDigits(p.jy + "/" + String(p.jm).padStart(2, "0") + "/" + String(p.jd).padStart(2, "0"), settings.outputDigits);
-  }
-  const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
-  if (settings.dateFormat === "iso") {
-    return displayDigits(y + "-" + String(m).padStart(2, "0") + "-" + String(day).padStart(2, "0"), settings.outputDigits);
-  }
-  if (settings.dateFormat === "long") {
-    const txt = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
-      .format(new Date(Date.UTC(y, m - 1, day)));
-    return displayDigits(txt, settings.outputDigits);
-  }
-  return displayDigits(y + "/" + String(m).padStart(2, "0") + "/" + String(day).padStart(2, "0"), settings.outputDigits);
+.puyan-note-title-icon svg {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  stroke-width: 2;
+  opacity: 0.75;
+  display: block;
 }
 
-/* ---------------- task reader ---------------- */
-function readTasks(content, countSubtasks) {
-  const tasks = [];
-  let parentIndent = null;
-  for (const line of content.split(/\r?\n/)) {
-    const m = line.match(/^(\s*)[-*+]\s+\[([ xX])\]\s+.+$/);
-    if (!m) continue;
-    const indent = m[1].replace(/\t/g, "    ").length;
-    if (!countSubtasks) {
-      if (parentIndent === null || indent < parentIndent) parentIndent = indent;
-      else if (indent > parentIndent) continue;
-    }
-    tasks.push(m[2].toLowerCase() === "x");
-  }
-  return tasks;
+.puyan-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-/* ---------------- widget options parser ---------------- */
-function parseWidgetOptions(source) {
-  const options = {};
-  for (const line of String(source || "").split(/\r?\n/)) {
-    const noteMatch = line.match(/^\s*note\s*:\s*(.+?)\s*$/i);
-    if (noteMatch) options.note = noteMatch[1].trim();
-    const titleMatch = line.match(/^\s*title\s*:\s*(.+?)\s*$/i);
-    if (titleMatch) options.title = titleMatch[1].trim();
-  }
-  return options;
-}
-function resolveLinkTarget(raw) {
-  return String(raw).replace(/^\[\[|\]\]$/g, "").split("|")[0].trim();
+.puyan-counter {
+  font-size: 0.82em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-normal);
+  background: var(--background-primary-alt, var(--background-secondary));
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border);
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* ==================================================================== */
-/* Inline popover calendar (Persian / Gregorian)                        */
-/* ==================================================================== */
-class PopoverCalendar {
-  constructor(anchor, plugin, initial, onPick) {
-    this.anchor = anchor;
-    this.plugin = plugin;
-    this.calApi = plugin.calApi;
-    this.settings = plugin.settings;
-    this.t = TEXT[plugin.settings.language];
-    this.onPick = onPick;
-    this.current = (initial instanceof Date && !isNaN(initial.getTime())) ? new Date(initial) : todayLocal();
-    this.overlay = null;
-    this.popover = null;
-    this.open();
-  }
-
-  open() {
-    document.querySelectorAll(".puyan-cal-overlay").forEach(n => n.remove());
-
-    this.overlay = document.body.createDiv({ cls: "puyan-cal-overlay" });
-    this.overlay.addEventListener("pointerdown", (e) => {
-      if (e.target === this.overlay) this.close();
-    });
-
-    this.popover = document.body.createDiv({ cls: "puyan-cal-popover" });
-    this.popover.setAttribute("dir", this.settings.language === "fa" ? "rtl" : "ltr");
-
-    const aRect = this.anchor.getBoundingClientRect();
-    const popW = 280;
-    const popH = 340;
-    const margin = 8;
-
-    let left = aRect.left;
-    let top = aRect.bottom + margin;
-    if (this.settings.language === "fa") left = aRect.right - popW;
-    if (top + popH > window.innerHeight - margin) top = Math.max(margin, aRect.top - popH - margin);
-    if (left < margin) left = margin;
-    if (left + popW > window.innerWidth - margin) left = window.innerWidth - popW - margin;
-
-    this.popover.style.top = top + "px";
-    this.popover.style.left = left + "px";
-    this._render();
-  }
-
-  _render() {
-    const pop = this.popover, calApi = this.calApi;
-    pop.empty();
-    const isJalali = this.settings.calendar === "jalali";
-    const pj = isJalali ? calApi.gregorianToJalali(this.current) : null;
-    const year = pj ? pj.jy : this.current.getFullYear();
-    const month = pj ? pj.jm : this.current.getMonth() + 1;
-
-    const header = pop.createDiv({ cls: "puyan-cal-header" });
-    const prev = header.createEl("button", { cls: "puyan-cal-nav", text: "‹" });
-    prev.setAttribute("type", "button");
-    prev.onclick = (e) => {
-      e.preventDefault();
-      if (isJalali) {
-        const nm = month === 1 ? 12 : month - 1;
-        const ny = month === 1 ? year - 1 : year;
-        const nd = calApi.jalaliToDate(ny, nm, 1);
-        if (nd) { this.current = nd; this._render(); }
-      } else {
-        this.current = new Date(year, month - 2, 1);
-        this._render();
-      }
-    };
-
-    const label = header.createSpan({ cls: "puyan-cal-label" });
-    if (isJalali) {
-      label.textContent = calApi.jalaliMonthName(month, this.settings.language === "fa" ? "fa" : "en") +
-        " " + displayDigits(year, this.settings.outputDigits);
-    } else {
-      label.textContent = new Intl.DateTimeFormat(
-        this.settings.language === "fa" ? "fa-IR" : "en-GB",
-        { month: "long", year: "numeric" }
-      ).format(this.current);
-    }
-
-    const next = header.createEl("button", { cls: "puyan-cal-nav", text: "›" });
-    next.setAttribute("type", "button");
-    next.onclick = (e) => {
-      e.preventDefault();
-      if (isJalali) {
-        const nm = month === 12 ? 1 : month + 1;
-        const ny = month === 12 ? year + 1 : year;
-        const nd = calApi.jalaliToDate(ny, nm, 1);
-        if (nd) { this.current = nd; this._render(); }
-      } else {
-        this.current = new Date(year, month, 1);
-        this._render();
-      }
-    };
-
-    const grid = pop.createDiv({ cls: "puyan-cal-grid" });
-    const weekdaysFa = isJalali ? ["ش","ی","د","س","چ","پ","ج"] : ["ی","د","س","چ","پ","ج","ش"];
-    const weekdaysEn = ["S","M","T","W","T","F","S"];
-    const weekdays = this.settings.language === "fa" ? weekdaysFa : weekdaysEn;
-    weekdays.forEach(w => grid.createSpan({ cls: "puyan-cal-wd", text: w }));
-
-    let firstDay, daysInMonth;
-    if (isJalali) {
-      const g = calApi.jalaliToDate(year, month, 1);
-      firstDay = g ? g.getDay() : 6;
-      const leap = (year % 33 === 1 || year % 33 === 5 || year % 33 === 9 || year % 33 === 13 ||
-                    year % 33 === 17 || year % 33 === 22 || year % 33 === 26 || year % 33 === 30);
-      daysInMonth = month <= 6 ? 31 : (month <= 11 ? 30 : (leap ? 30 : 29));
-    } else {
-      firstDay = new Date(year, month - 1, 1).getDay();
-      daysInMonth = new Date(year, month, 0).getDate();
-    }
-    const shift = isJalali ? (firstDay + 1) % 7 : firstDay;
-    for (let i = 0; i < shift; i++) grid.createSpan({ cls: "puyan-cal-empty" });
-
-    const today = todayLocal();
-    const selected = this.current;
-    for (let d = 1; d <= daysInMonth; d++) {
-      const cellDate = isJalali
-        ? calApi.jalaliToDate(year, month, d)
-        : validGregorianLocal(year, month, d);
-      const isToday = cellDate && cellDate.toDateString() === today.toDateString();
-      const isSel = cellDate && cellDate.toDateString() === selected.toDateString();
-      let cls = "puyan-cal-day";
-      if (isToday) cls += " is-today";
-      if (isSel) cls += " is-selected";
-      const btn = grid.createEl("button", { cls, text: displayDigits(d, this.settings.outputDigits) });
-      btn.setAttribute("type", "button");
-      btn.onclick = (e) => {
-        e.preventDefault();
-        if (cellDate) {
-          this.onPick(cellDate);
-          this.close();
-        }
-      };
-    }
-
-    const footer = pop.createDiv({ cls: "puyan-cal-footer" });
-    const todayBtn = footer.createEl("button", { cls: "puyan-cal-today", text: this.t.today });
-    todayBtn.setAttribute("type", "button");
-    todayBtn.onclick = (e) => { e.preventDefault(); this.onPick(todayLocal()); this.close(); };
-    const closeBtn = footer.createEl("button", { cls: "puyan-cal-close", text: this.t.closeBtn });
-    closeBtn.setAttribute("type", "button");
-    closeBtn.onclick = (e) => { e.preventDefault(); this.close(); };
-  }
-
-  close() {
-    if (this.overlay) { this.overlay.remove(); this.overlay = null; }
-    if (this.popover) { this.popover.remove(); this.popover = null; }
-  }
+/* ============================================================
+   Compact open-note icon button (cross-note only)
+   ============================================================ */
+.puyan-open-icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary-alt, var(--background-secondary));
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  flex-shrink: 0;
 }
 
-/* ==================================================================== */
-/* Compact stepper                                                      */
-/* ==================================================================== */
-class CompactStepper {
-  constructor(parent, opts) {
-    this.value = Number(opts.value) || 1;
-    this.min = opts.min ?? 1;
-    this.max = opts.max ?? 9999;
-    this.step = opts.step ?? 1;
-    this.onChange = opts.onChange || (() => {});
-    this.outputDigits = opts.outputDigits || "en";
-
-    const wrap = parent.createDiv({ cls: "puyan-stepper" });
-    const minus = wrap.createEl("button", { cls: "puyan-stepper-btn", text: "−" });
-    minus.setAttribute("type", "button");
-    minus.onclick = (e) => { e.preventDefault(); this.setValue(this.value - this.step); };
-
-    const input = wrap.createEl("input", { cls: "puyan-stepper-input", type: "text" });
-    input.value = displayDigits(this.value, this.outputDigits);
-    input.oninput = () => {
-      const n = Number(normalizeDigits(input.value));
-      if (Number.isFinite(n)) {
-        this.value = Math.min(this.max, Math.max(this.min, n));
-        this.onChange(this.value);
-      }
-    };
-    input.onblur = () => { input.value = displayDigits(this.value, this.outputDigits); };
-
-    const plus = wrap.createEl("button", { cls: "puyan-stepper-btn", text: "+" });
-    plus.setAttribute("type", "button");
-    plus.onclick = (e) => { e.preventDefault(); this.setValue(this.value + this.step); };
-
-    this.input = input;
-  }
-  setValue(v) {
-    this.value = Math.min(this.max, Math.max(this.min, v));
-    this.input.value = displayDigits(this.value, this.outputDigits);
-    this.onChange(this.value);
-  }
+.puyan-open-icon-btn svg {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  stroke-width: 2;
+  display: block;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
 }
 
-/* ==================================================================== */
-/* Template builder widget                                              */
-/* ==================================================================== */
-class TemplateBuilder {
-  constructor(parent, opts) {
-    this.parent = parent;
-    this.t = opts.t;
-    this.settings = opts.settings || {};
-    this.value = opts.initial || "- [ ] {n}";
-    this.onChange = opts.onChange || (() => {});
-    this.render();
-  }
-  render() {
-    const { parent, t } = this;
-    parent.empty();
-    const wrap = parent.createDiv({ cls: "puyan-tpl-builder" });
-    const ta = wrap.createEl("textarea", { cls: "puyan-tpl-input" });
-    ta.rows = 3;
-    ta.value = this.value;
-    ta.oninput = () => { this.value = ta.value; this.updatePreview(); this.onChange(this.value); };
-    const insert = (text) => {
-      const start = ta.selectionStart ?? ta.value.length;
-      const end = ta.selectionEnd ?? ta.value.length;
-      ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
-      const caret = start + text.length;
-      ta.focus();
-      ta.setSelectionRange(caret, caret);
-      this.value = ta.value;
-      this.updatePreview();
-      this.onChange(this.value);
-    };
-    const tokenRow = wrap.createDiv({ cls: "puyan-tpl-row" });
-    tokenRow.createSpan({ cls: "puyan-tpl-label", text: t.tplTokensLabel });
-    [
-      { tok: "{n}", title: t.tplTokenN }, { tok: "{total}", title: t.tplTokenTotal },
-      { tok: "{title}", title: t.tplTokenTitle }, { tok: "{date}", title: t.tplTokenDate }
-    ].forEach(({ tok, title }) => {
-      const btn = tokenRow.createEl("button", { cls: "puyan-tpl-btn", text: tok });
-      btn.setAttribute("type", "button");
-      btn.title = title;
-      btn.onclick = (e) => { e.preventDefault(); insert(tok); };
-    });
-    const sepRow = wrap.createDiv({ cls: "puyan-tpl-row" });
-    sepRow.createSpan({ cls: "puyan-tpl-label", text: t.tplTextLabel });
-    [
-      { txt: "- [ ] ", title: t.tplTextCheckbox }, { txt: " — ", title: "—" },
-      { txt: " | ", title: "|" }, { txt: " " + t.tplTextOf + " ", title: t.tplTextOf },
-      { txt: " / ", title: "/" }, { txt: "\n", title: t.tplTextNewline }
-    ].forEach(({ txt, title }) => {
-      const btn = sepRow.createEl("button", { cls: "puyan-tpl-btn", text: txt === "\n" ? "↵" : txt });
-      btn.setAttribute("type", "button");
-      btn.title = title;
-      btn.onclick = (e) => { e.preventDefault(); insert(txt); };
-    });
-    const presetRow = wrap.createDiv({ cls: "puyan-tpl-row" });
-    presetRow.createSpan({ cls: "puyan-tpl-label", text: t.tplPresetsLabel });
-    [
-      { tpl: "- [ ] {n}", title: t.tplPresetSimple },
-      { tpl: "- [ ] {title} — {n} " + t.tplTextOf + " {total}", title: t.tplPresetWithTitle },
-      { tpl: "- [ ] {date} | {n}", title: t.tplPresetWithDate },
-      { tpl: "{n}", title: t.tplPresetBare }
-    ].forEach(({ tpl, title }) => {
-      const btn = presetRow.createEl("button", { cls: "puyan-tpl-btn puyan-tpl-preset", text: title });
-      btn.setAttribute("type", "button");
-      btn.onclick = (e) => {
-        e.preventDefault();
-        this.value = tpl;
-        ta.value = tpl;
-        this.updatePreview();
-        this.onChange(this.value);
-      };
-    });
-    this.previewEl = wrap.createDiv({ cls: "puyan-tpl-preview" });
-    this.updatePreview();
-  }
-  updatePreview() {
-    if (!this.previewEl) return;
-    const sample = { n: 3, total: 10, title: this.t.tplSampleTitle, date: "1405/09/13" };
-    const rendered = String(this.value || "")
-      .replace(/\{n\}/g, displayDigits(sample.n, this.settings.outputDigits))
-      .replace(/\{total\}/g, displayDigits(sample.total, this.settings.outputDigits))
-      .replace(/\{title\}/g, sample.title)
-      .replace(/\{date\}/g, sample.date);
-    this.previewEl.empty();
-    this.previewEl.createSpan({ cls: "puyan-tpl-preview-label", text: this.t.tplPreviewLabel + " " });
-    this.previewEl.createEl("code", { text: rendered });
-  }
+.puyan-open-icon-btn:hover {
+  color: var(--text-on-accent, #fff);
+  background: var(--puyan-accent, var(--interactive-accent));
+  border-color: var(--puyan-accent, var(--interactive-accent));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--puyan-accent-soft, rgba(99, 102, 241, 0.3));
 }
 
-/* ==================================================================== */
-/* Checklist preset modal                                              */
-/* ==================================================================== */
-class ChecklistPresetModal extends Modal {
-  constructor(app, plugin, preset, done) {
-    super(app); this.plugin = plugin; this.preset = preset; this.done = done;
-    this.t = TEXT[plugin.settings.language];
-  }
-  onOpen() {
-    const el = this.contentEl, t = this.t, p = this.plugin, old = this.preset;
-    el.addClass("puyan-modal");
-    el.setAttribute("dir", p.settings.language === "fa" ? "rtl" : "ltr");
-    el.createEl("h2", { text: old ? t.editList : t.addList });
-    let name = old?.name || "", type = old?.type || "fixed", items = (old?.items || []).join(", ");
-    let interval = String(old?.interval || 10), dateStep = String(old?.dateStep || 1), template = old?.template || "- [ ] {n}";
+.puyan[dir="rtl"] .puyan-open-icon-btn:hover svg { transform: translate(-1px, -1px); }
+.puyan[dir="ltr"] .puyan-open-icon-btn:hover svg { transform: translate(1px, -1px); }
 
-    new Setting(el).setName(t.listName).addText(x => x.setValue(name).onChange(v => name = v));
-    const typeRow = new Setting(el).setName(t.listType);
-    const fields = el.createDiv();
-    const render = () => {
-      fields.empty();
-      if (type === "fixed") {
-        new Setting(fields).setName(t.itemsLabel).setDesc(t.itemsDesc).addTextArea(x => {
-          x.setValue(items); x.inputEl.rows = 4; x.onChange(v => items = v);
-        });
-      } else {
-        new Setting(fields).setName(t.defaultIntervalLabel).setDesc(t.defaultIntervalDesc)
-          .addText(x => x.setValue(interval).onChange(v => interval = v));
-        new Setting(fields).setName(t.dateStepLabel).setDesc(t.dateStepDesc)
-          .addText(x => x.setValue(dateStep).onChange(v => dateStep = v));
-        new Setting(fields).setName(t.templateLabel).setDesc(t.templateDesc);
-        const builderHost = fields.createDiv();
-        new TemplateBuilder(builderHost, { initial: template, t, settings: p.settings, onChange: v => template = v });
-      }
-    };
-    typeRow.addDropdown(x => x.addOption("fixed", t.listItemsType).addOption("step", t.numericListType)
-      .setValue(type).onChange(v => { type = v; render(); }));
-    render();
-    new Setting(el).addButton(x => x.setButtonText(old ? t.editList : t.addList).setCta().onClick(async () => {
-      if (!name.trim()) { new Notice(t.invalid); return; }
-      const item = { id: old?.id || "puyan-" + Date.now(), name: name.trim(), type };
-      if (type === "fixed") {
-        item.items = items.split(",").map(v => v.trim()).filter(Boolean);
-        if (!item.items.length) { new Notice(t.listEmpty); return; }
-      } else {
-        item.interval = Number(normalizeDigits(interval)) || 10;
-        item.dateStep = Math.max(1, Number(normalizeDigits(dateStep)) || 1);
-        item.template = template || "- [ ] {n}";
-        if (!Number.isInteger(item.interval) || item.interval < 1) { new Notice(t.invalid); return; }
-      }
-      const arr = p.settings.savedChecklists || (p.settings.savedChecklists = []);
-      const i = arr.findIndex(v => v.id === item.id);
-      if (i < 0) arr.push(item); else arr[i] = item;
-      await p.saveSettings();
-      p.refreshPresetCommands();
-      this.close(); this.done();
-    }));
-  }
-  onClose() { this.contentEl.empty(); }
+.puyan[data-cross-note="false"] .puyan-open-icon-btn { display: none !important; }
+
+.puyan-open-btn { display: none !important; }
+
+/* ============================================================
+   Progress track, glow, fill
+   ============================================================ */
+.puyan-track {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 26px;
+  background: color-mix(in srgb, var(--background-secondary) 85%, rgba(0, 0, 0, 0.08));
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.08);
+  padding: 3px;
+  box-sizing: border-box;
 }
 
-/* ==================================================================== */
-/* Two-step wizard                                                      */
-/* ==================================================================== */
-class ChecklistWizardModal extends Modal {
-  constructor(app, plugin, submit, preset = null) {
-    super(app); this.plugin = plugin; this.submit = submit; this.preset = preset;
-    this.t = TEXT[plugin.settings.language];
-    this.step = 1;
-  }
-
-  onOpen() {
-    const el = this.contentEl, t = this.t, p = this.plugin;
-    el.addClass("puyan-modal");
-    el.setAttribute("dir", p.settings.language === "fa" ? "rtl" : "ltr");
-    const arr = p.settings.savedChecklists || [];
-    if (!arr.length) {
-      el.createEl("h2", { text: t.modalTitle });
-      el.createDiv({ text: t.noSavedLists, cls: "puyan-empty" });
-      return;
-    }
-    this.state = {
-      selected: this.preset ? this.preset.id : arr[0].id,
-      title: "",
-      startDate: todayLocal(),
-      stepTotal: "",
-      stepInterval: "",
-      dateStep: "1",
-      widgetBefore: false
-    };
-    this.headerEl = el.createEl("h2");
-    this.bodyEl = el.createDiv();
-    this.footerEl = el.createDiv({ cls: "puyan-wizard-footer" });
-    this._bindEnter();
-    this._renderStep();
-  }
-
-  _bindEnter() {
-    const handler = (e) => {
-      if (e.key !== "Enter" || e.shiftKey) return;
-      if (e.target && (e.target.tagName === "TEXTAREA" || e.target.classList.contains("puyan-stepper-input"))) return;
-      e.preventDefault();
-      if (this.step === 1) this._onContinue();
-      else this._onCreate();
-    };
-    this.bodyEl.addEventListener("keydown", handler);
-    this.footerEl.addEventListener("keydown", handler);
-  }
-
-  _currentPreset() {
-    return (this.plugin.settings.savedChecklists || []).find(v => v.id === this.state.selected) || null;
-  }
-  _needsDate() {
-    const preset = this._currentPreset();
-    if (!preset || preset.type !== "step") return false;
-    return /\{date\}/.test(preset.template || "");
-  }
-
-  _renderStep() {
-    const t = this.t, p = this.plugin, arr = p.settings.savedChecklists || [];
-    const preset = this._currentPreset();
-    this.headerEl.textContent = this.step === 1 ? t.modalTitle : (preset ? preset.name : t.modalTitle);
-    this.bodyEl.empty();
-    this.footerEl.empty();
-
-    if (this.step === 1) {
-      if (!this.preset) {
-        new Setting(this.bodyEl).setName(t.chooseList).addDropdown(x => {
-          arr.forEach(v => x.addOption(v.id, v.name));
-          x.setValue(this.state.selected).onChange(v => {
-            this.state.selected = v;
-            const pr = this._currentPreset();
-            this.state.stepInterval = pr ? String(pr.interval || 10) : "";
-            this.state.dateStep = String(pr?.dateStep || 1);
-          });
-        });
-      } else {
-        const row = new Setting(this.bodyEl).setName(t.chooseList);
-        row.settingEl.createSpan({ text: this.preset.name, cls: "puyan-preset-name" });
-      }
-      new Setting(this.bodyEl).setName(t.activity)
-        .addText(x => x.setValue(this.state.title).onChange(v => this.state.title = v));
-      new Setting(this.bodyEl).setName(t.widgetBefore)
-        .addToggle(x => x.setValue(this.state.widgetBefore).onChange(v => this.state.widgetBefore = v));
-
-      const btn = this.footerEl.createEl("button", { cls: "mod-cta", text: t.continueBtn });
-      btn.setAttribute("type", "button");
-      btn.onclick = () => this._onContinue();
-    } else {
-      new Setting(this.bodyEl).setName(t.totalLabel).setDesc(t.totalDesc)
-        .addText(x => x.setValue(this.state.stepTotal).onChange(v => this.state.stepTotal = v));
-      new Setting(this.bodyEl).setName(t.intervalLabel).setDesc(t.intervalDesc)
-        .addText(x => x.setValue(this.state.stepInterval).onChange(v => this.state.stepInterval = v));
-
-      if (this._needsDate()) {
-        const dateSetting = new Setting(this.bodyEl).setName(t.startDate).setDesc(t.startDateDesc);
-        const ctrl = dateSetting.controlEl;
-        const dateInput = ctrl.createEl("input", { type: "text", cls: "puyan-date-input" });
-        dateInput.value = formatDate(this.state.startDate, p.settings, p.calApi);
-        dateInput.placeholder = p.settings.calendar === "jalali" ? "1405/09/13" : "2026/12/04";
-        dateInput.oninput = () => {
-          const parsed = parseDateValue(dateInput.value, p.settings.calendar, p.calApi);
-          if (parsed) this.state.startDate = parsed;
-        };
-
-        const pickBtn = ctrl.createEl("button", { cls: "puyan-date-pick" });
-        pickBtn.setAttribute("type", "button");
-        pickBtn.title = t.pickDate;
-        pickBtn.setAttribute("aria-label", t.pickDate);
-        calendarIcon(pickBtn);
-        pickBtn.onclick = (e) => {
-          e.preventDefault();
-          new PopoverCalendar(pickBtn, p, this.state.startDate, (d) => {
-            this.state.startDate = d;
-            dateInput.value = formatDate(d, p.settings, p.calApi);
-          });
-        };
-
-        const stepSetting = new Setting(this.bodyEl).setName(t.dateStepLabel).setDesc(t.dateStepDesc);
-        const stepCtrl = stepSetting.controlEl;
-        new CompactStepper(stepCtrl, {
-          value: Number(this.state.dateStep) || 1,
-          min: 1, max: 365, step: 1,
-          outputDigits: p.settings.outputDigits,
-          onChange: v => this.state.dateStep = String(v)
-        });
-      }
-
-      const back = this.footerEl.createEl("button", { text: t.backBtn });
-      back.setAttribute("type", "button");
-      back.onclick = () => { this.step = 1; this._renderStep(); };
-      const create = this.footerEl.createEl("button", { cls: "mod-cta", text: t.create });
-      create.setAttribute("type", "button");
-      create.onclick = () => this._onCreate();
-    }
-  }
-
-  _onContinue() {
-    const t = this.t;
-    const preset = this._currentPreset();
-    if (!preset) { new Notice(t.invalid); return; }
-    if (preset.type === "fixed") { this._onCreate(); return; }
-    this.state.stepTotal = "";
-    this.state.stepInterval = String(preset.interval || 10);
-    this.state.dateStep = String(preset.dateStep || 1);
-    this.state.startDate = todayLocal();
-    this.step = 2;
-    this._renderStep();
-  }
-
-  _onCreate() {
-    const t = this.t, p = this.plugin;
-    const preset = this._currentPreset();
-    if (!preset) { new Notice(t.invalid); return; }
-    let entries = [];
-    if (preset.type === "fixed") {
-      entries = (preset.items || []).map((v, i) => ({ value: v, n: i + 1, total: preset.items.length }));
-    } else {
-      const total = Number(normalizeDigits(this.state.stepTotal));
-      const interval = Number(normalizeDigits(this.state.stepInterval)) || Number(preset.interval) || 10;
-      if (!Number.isInteger(total) || total < 1 || !Number.isInteger(interval) || interval < 1) {
-        new Notice(t.invalid); return;
-      }
-      for (let n = interval; n < total; n += interval) entries.push({ n, total });
-      entries.push({ n: total, total });
-    }
-    if (!entries.length) { new Notice(t.listEmpty); return; }
-
-    let base = this.state.startDate instanceof Date && !isNaN(this.state.startDate.getTime())
-      ? this.state.startDate : todayLocal();
-    const stepDays = Math.max(1, Number(normalizeDigits(this.state.dateStep)) || 1);
-    const hasDate = preset.type === "step" && /\{date\}/.test(preset.template || "");
-
-    const lines = entries.map((v, i) => {
-      const date = (hasDate || preset.type === "fixed")
-        ? formatDate(new Date(base.getTime() + i * stepDays * 86400000), p.settings, p.calApi)
-        : "";
-      if (preset.type === "fixed") return "- [ ] " + v.value + (date ? " — " + date : "");
-      return (preset.template || "- [ ] {n}")
-        .replace(/\{n\}/g, displayDigits(v.n, p.settings.outputDigits))
-        .replace(/\{total\}/g, displayDigits(v.total, p.settings.outputDigits))
-        .replace(/\{title\}/g, this.state.title.trim())
-        .replace(/\{date\}/g, date);
-    });
-
-    this.submit({
-      title: this.state.title.trim(),
-      lines,
-      widgetBefore: this.state.widgetBefore
-    });
-    this.close();
-  }
-
-  onClose() { this.contentEl.empty(); }
+.puyan-glow {
+  position: absolute;
+  top: -4px;
+  inset-inline-start: 0;
+  height: calc(100% + 8px);
+  filter: blur(14px);
+  opacity: 0.48;
+  border-radius: 999px;
+  pointer-events: none;
+  transition: width var(--puyan-bar-transition), background 0.4s ease;
 }
 
-/* ==================================================================== */
-/* What's new modal                                                     */
-/* ==================================================================== */
-class WhatsNewModal extends Modal {
-  constructor(app, plugin, version, isFirstInstall = false) {
-    super(app);
-    this.plugin = plugin;
-    this.version = version;
-    this.isFirstInstall = isFirstInstall;
-    this.lang = plugin.settings.language || "fa";
-  }
-
-  onOpen() {
-    const { contentEl } = this;
-    const lang = this.lang;
-    const t = TEXT[lang] || TEXT.fa;
-    const entry = CHANGELOG[this.version];
-
-    contentEl.empty();
-    contentEl.addClass("puyan-modal", "puyan-whats-new");
-    contentEl.setAttribute("dir", lang === "fa" ? "rtl" : "ltr");
-
-    const header = contentEl.createDiv({ cls: "puyan-wn-header" });
-    const titleWrap = header.createDiv({ cls: "puyan-wn-title-wrap" });
-    const title = entry
-      ? (entry.title[lang] || entry.title.en || entry.title.fa)
-      : t.whatsNewTitle;
-    titleWrap.createEl("h2", { cls: "puyan-wn-title", text: title });
-
-    const subtitle = this.isFirstInstall
-      ? t.whatsNewFirstInstall
-      : t.whatsNewSince(this.version);
-    titleWrap.createEl("div", { cls: "puyan-wn-subtitle", text: subtitle });
-
-    if (entry) {
-      const intro = entry.intro[lang] || entry.intro.en || entry.intro.fa;
-      if (intro) {
-        contentEl.createEl("p", { cls: "puyan-wn-intro", text: intro });
-      }
-
-      const items = entry.items[lang] || entry.items.en || entry.items.fa || [];
-      const list = contentEl.createDiv({ cls: "puyan-wn-list" });
-      for (const item of items) {
-        const row = list.createDiv({ cls: "puyan-wn-item" });
-        row.createSpan({ cls: "puyan-wn-item-icon", text: item.icon || "•" });
-        const body = row.createDiv({ cls: "puyan-wn-item-body" });
-        body.createDiv({ cls: "puyan-wn-item-text", text: item.text });
-
-        if (item.example && item.example.code) {
-          const exWrap = body.createDiv({ cls: "puyan-wn-example" });
-          exWrap.createSpan({ cls: "puyan-wn-example-label", text: t.whatsNewExample });
-          exWrap.createEl("pre", { cls: "puyan-wn-code" }, (pre) => {
-            pre.createEl("code", { text: item.example.code });
-          });
-        }
-      }
-    }
-
-    const footer = contentEl.createDiv({ cls: "puyan-wn-footer" });
-    const closeBtn = footer.createEl("button", {
-      cls: "mod-cta",
-      text: t.whatsNewStart
-    });
-    closeBtn.addEventListener("click", () => this.close());
-
-    const linkBtn = footer.createEl("button", { text: t.whatsNewFull });
-    linkBtn.addEventListener("click", () => {
-      window.open("https://github.com/singhaf9270/puyan/releases", "_blank");
-    });
-  }
-
-  onClose() { this.contentEl.empty(); }
+.puyan-fill {
+  height: 100%;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-inline-end: 10px;
+  box-sizing: border-box;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.76em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  transition: width var(--puyan-bar-transition), background 0.4s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  position: relative;
+  z-index: 2;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-/* ==================================================================== */
-/* Settings tab                                                         */
-/* ==================================================================== */
-class PuyanSettings extends PluginSettingTab {
-  constructor(app, plugin) { super(app, plugin); this.plugin = plugin; }
-  display() {
-    const el = this.containerEl, p = this.plugin, s = p.settings, t = TEXT[s.language];
-    el.empty();
-    el.setAttribute("dir", s.language === "fa" ? "rtl" : "ltr");
-
-    /* Header with title + "what's new" icon button */
-    const header = el.createDiv({ cls: "puyan-settings-header" });
-    header.createEl("h2", { text: t.settings, cls: "puyan-settings-title" });
-
-    const currentVersion = p.manifest.version;
-    const hasChangelog = Boolean(CHANGELOG[currentVersion]);
-    const whatsNewBtn = header.createEl("button", {
-      cls: "puyan-whats-new-btn",
-      attr: {
-        type: "button",
-        title: t.whatsNewTooltip,
-        "aria-label": t.whatsNewTooltip
-      }
-    });
-    if (!hasChangelog) whatsNewBtn.addClass("is-empty");
-    renderIcon(whatsNewBtn, "sparkles");
-    const versionBadge = whatsNewBtn.createSpan({ cls: "puyan-whats-new-version", text: currentVersion });
-    whatsNewBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      if (hasChangelog) {
-        new WhatsNewModal(this.app, p, currentVersion, false).open();
-      } else {
-        new Notice(
-          s.language === "fa"
-            ? "برای این نسخه یادداشت تغییراتی ثبت نشده است."
-            : "No changelog entry registered for this version."
-        );
-      }
-    });
-
-    new Setting(el).setName(t.language).addDropdown(d => d
-      .addOption("fa", t.fa).addOption("en", t.en).setValue(s.language)
-      .onChange(async v => { s.language = v; await p.saveSettings(); p.refreshPresetCommands(); this.display(); }));
-
-    if (s.calendar === "jalali" && !p.calApi.available) {
-      el.createEl("p", { text: t.calendarPluginMissing, cls: "puyan-empty" });
-    }
-
-    el.createEl("h3", { text: s.language === "fa" ? "فیلدهای یادداشت (Frontmatter)" : "Frontmatter properties" });
-    p.textSetting(el, t.startField, "startField", DEFAULT_SETTINGS.startField);
-    p.textSetting(el, t.endField, "endField", DEFAULT_SETTINGS.endField);
-    p.textSetting(el, t.durationField, "durationField", DEFAULT_SETTINGS.durationField);
-    p.textSetting(el, t.progressField, "progressField", DEFAULT_SETTINGS.progressField);
-
-    el.createEl("h3", { text: s.language === "fa" ? "تاریخ و نمایش" : "Dates and display" });
-    new Setting(el).setName(t.calendar).addDropdown(d => d
-      .addOption("jalali", t.jalali).addOption("gregorian", t.gregorian)
-      .setValue(s.calendar).onChange(v => p.changeDateSettings("calendar", v)));
-    new Setting(el).setName(t.dateFormat).addDropdown(d => d
-      .addOption("numeric", t.numeric).addOption("long", t.long).addOption("iso", t.iso)
-      .setValue(s.dateFormat).onChange(v => p.changeDateSettings("dateFormat", v)));
-    new Setting(el).setName(t.outputDigits).addDropdown(d => d
-      .addOption("fa", t.persianDigits).addOption("en", t.latinDigits)
-      .setValue(s.outputDigits).onChange(async v => { s.outputDigits = v; await p.saveSettings(); p.refreshAll(); }));
-
-    el.createEl("h3", { text: s.language === "fa" ? "نمایش ویجت" : "Widget display" });
-    p.toggleSetting(el, t.saveProgress, "saveProgress");
-    p.toggleSetting(el, t.countSubtasks, "countSubtasks");
-    p.toggleSetting(el, t.showCounter, "showCounter");
-    p.toggleSetting(el, t.showStartDate, "showStartDate");
-    p.toggleSetting(el, t.showEndDate, "showEndDate");
-    p.toggleSetting(el, t.showDuration, "showDuration");
-    p.toggleSetting(el, t.showNoteTitle, "showNoteTitle");
-    p.toggleSetting(el, t.showOpenButton, "showOpenButton");
-    p.toggleSetting(el, t.enableConfetti, "enableConfetti");
-
-    el.createEl("h3", { text: t.savedLists });
-    const addRow = new Setting(el).setName(t.savedLists).setDesc(
-      s.language === "fa"
-        ? "قالب‌های ثابت و مرحله‌ای را ذخیره کنید و هنگام اجرای فرمان یکی را انتخاب کنید."
-        : "Save fixed and step-based templates, then choose one when running the command."
-    );
-    addRow.addButton(b => b.setIcon("plus").setTooltip(t.addList)
-      .onClick(() => new ChecklistPresetModal(this.app, p, null, () => this.display()).open()));
-
-    (s.savedChecklists || []).forEach((preset, index) => {
-      const row = new Setting(el).setName(preset.name).setDesc(
-        preset.type === "fixed"
-          ? (preset.items || []).join(", ")
-          : (t.intervalLabel + ": " + String(preset.interval) + " · " + (preset.template || "- [ ] {n}"))
-      );
-      row.addButton(b => b.setIcon("pencil").setTooltip(t.editList)
-        .onClick(() => new ChecklistPresetModal(this.app, p, preset, () => this.display()).open()));
-      row.addButton(b => b.setIcon("trash").setTooltip(t.removeList)
-        .onClick(async () => {
-          p.settings.savedChecklists.splice(index, 1);
-          await p.saveSettings();
-          p.refreshPresetCommands();
-          this.display();
-        }));
-    });
-    this.addSupportSection(el, s.language === "fa");
-  }
-
-  addSupportSection(container, fa) {
-    const t = TEXT[this.plugin.settings.language];
-    const root = container.createDiv({ cls: "ot-support" });
-    root.setAttribute("dir", fa ? "rtl" : "ltr");
-    root.setAttribute("aria-label", t.supportAriaLabel);
-
-    root.createEl("h3", { cls: "ot-contact-heading", text: t.supportHeading });
-    root.createEl("p", { cls: "ot-contact-intro", text: t.supportIntro });
-
-    const grid = root.createDiv({ cls: "ot-channel-grid" });
-    const channels = [
-      ["bale", fa ? "بله" : "Bale", "https://ble.ir/obsidiantut"],
-      ["telegram", fa ? "تلگرام" : "Telegram", "https://t.me/obsidiantut"],
-      ["youtube", fa ? "یوتیوب" : "YouTube", "https://youtube.com/@obsidiantut"]
-    ];
-    for (const [type, name, url] of channels) {
-      const card = grid.createEl("a", { cls: "ot-channel" });
-      card.href = url;
-      card.setAttribute("target", "_blank");
-      card.setAttribute("rel", "noopener noreferrer");
-      card.setAttribute("aria-label", (fa ? "عضویت در کانال " : "Join our ") + name);
-      const logoSpan = card.createSpan({ cls: "ot-channel-logo" });
-      logo(logoSpan, type);
-      card.createSpan({ cls: "ot-channel-name", text: name });
-      const handle = card.createSpan({ cls: "ot-channel-handle", text: "@obsidiantut" });
-      handle.setAttribute("dir", "ltr");
-      card.createSpan({ cls: "ot-channel-join", text: t.supportChannelJoin });
-    }
-
-    const donate = root.createDiv({ cls: "ot-donation" });
-    const sym = donate.createDiv({ cls: "ot-donation-symbol" });
-    logo(sym, "heart");
-    const copy = donate.createDiv({ cls: "ot-donation-copy" });
-    copy.createEl("h4", { cls: "ot-donation-title", text: t.supportDonationTitle });
-    copy.createEl("p", { cls: "ot-donation-desc", text: t.supportDonationDesc });
-    const btn = donate.createEl("a", { cls: "ot-donation-button", text: t.supportDonateBtn });
-    btn.href = "https://reymit.ir/singhaf9270";
-    btn.setAttribute("target", "_blank");
-    btn.setAttribute("rel", "noopener noreferrer");
-    btn.setAttribute("aria-label", t.supportDonateAria);
-  }
+.puyan-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.24) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: puyanShimmer 2.8s infinite ease-in-out;
+  pointer-events: none;
 }
 
-/* ==================================================================== */
-module.exports = class PuyanPlugin extends Plugin {
-  async onload() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-    if (!Array.isArray(this.settings.savedChecklists)) this.settings.savedChecklists = DEFAULT_SETTINGS.savedChecklists;
+@keyframes puyanShimmer {
+  0% { transform: translateX(-100%); }
+  65%, 100% { transform: translateX(100%); }
+}
 
-    const hasDated = this.settings.savedChecklists.some(p => p.id === "stepsWithDates");
-    if (!hasDated) {
-      this.settings.savedChecklists.push(DEFAULT_SETTINGS.savedChecklists.find(p => p.id === "stepsWithDates"));
-      await this.saveSettings();
-    }
-    let migrated = false;
-    for (const preset of this.settings.savedChecklists) {
-      if (preset && preset.type === "step") {
-        if ("total" in preset) { delete preset.total; migrated = true; }
-        if (!("dateStep" in preset)) { preset.dateStep = 1; migrated = true; }
-      }
-    }
-    if (migrated) await this.saveSettings();
+.puyan-outside-percent {
+  position: absolute;
+  inset-inline-end: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.74em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  z-index: 3;
+}
 
-    this.views = new Map();
-    this.updating = new Set();
-    this.presetCommandIds = new Set();
+/* ============================================================
+   Stats chips
+   ============================================================ */
+.puyan-stats {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
 
-    this.calApi = new CalendarApi(this.app);
-    this.registerEvent(this.app.workspace.on("layout-ready", () => this.calApi._resolve()));
+.puyan-stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--background-secondary) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+}
 
-    this.registerMarkdownCodeBlockProcessor("puyan", async (source, el, ctx) => {
-      const options = parseWidgetOptions(source);
-      let target = ctx.sourcePath;
-      if (options.note) {
-        const link = resolveLinkTarget(options.note);
-        const destination = this.app.metadataCache.getFirstLinkpathDest(link, ctx.sourcePath);
-        if (destination) target = destination.path;
-        else {
-          el.addClass("puyan");
-          el.setAttribute("dir", this.settings.language === "fa" ? "rtl" : "ltr");
-          el.createDiv({ cls: "puyan-empty", text: TEXT[this.settings.language].targetNotFound + options.note });
-          return;
-        }
-      }
-      const path = target;
-      const view = {
-        el, path, sourcePath: ctx.sourcePath,
-        title: options.title || "",
-        isCrossNote: Boolean(options.note && target !== ctx.sourcePath),
-        hasCelebratedInitial100: false,
-        lastPercent: null,
-        refresh: null
-      };
-      view.refresh = () => this.renderWidget(view);
-      if (!this.views.has(path)) this.views.set(path, new Set());
-      this.views.get(path).add(view);
-      const child = new MarkdownRenderChild(el);
-      child.onunload = () => {
-        const set = this.views.get(path);
-        if (set) { set.delete(view); if (!set.size) this.views.delete(path); }
-      };
-      ctx.addChild(child);
-      await this.renderWidget(view);
-    });
+.puyan-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  color: var(--puyan-accent, var(--interactive-accent));
+}
 
-    this.registerEvent(this.app.vault.on("modify", file => {
-      if (!file || this.updating.has(file.path)) return;
-      const set = this.views.get(file.path);
-      if (set) for (const view of set) view.refresh();
-    }));
+.puyan-stat-icon svg {
+  width: 13px;
+  height: 13px;
+  min-width: 13px;
+  min-height: 13px;
+  stroke-width: 2.2;
+  display: block;
+  opacity: 0.85;
+}
 
-    const t = TEXT[this.settings.language];
-    this.addCommand({
-      id: "insert-progress-widget", name: t.commandInsert,
-      editorCallback: editor => {
-        const fence = String.fromCharCode(96).repeat(3);
-        editor.replaceRange(fence + "puyan\n\n" + fence + "\n", editor.getCursor());
-      }
-    });
-    this.addCommand({
-      id: "create-checklist", name: t.commandChecklist,
-      editorCallback: editor => {
-        new ChecklistWizardModal(this.app, this, result => this._insertChecklist(editor, result)).open();
-      }
-    });
+/* ============================================================
+   Completion banner & duration info
+   ============================================================ */
+.puyan-completion {
+  position: relative;
+  z-index: 2;
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.14) 0%,
+    rgba(5, 150, 105, 0.06) 100%
+  );
+  border-radius: var(--puyan-radius-md);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08);
+  direction: inherit;
+  flex-wrap: wrap;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
 
-    this.refreshPresetCommands();
-    this.addSettingTab(new PuyanSettings(this.app, this));
+.puyan-completion:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.15);
+}
 
-    // Show "What's new" on version bump / first install
-    this.app.workspace.onLayoutReady(() => this.maybeShowWhatsNew());
-  }
+.puyan-crown {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3em;
+  flex-shrink: 0;
+}
 
-  _insertChecklist(editor, result) {
-    const fence = String.fromCharCode(96).repeat(3);
-    const heading = result.title ? "## " + result.title + "\n\n" : "";
-    const widget = fence + "puyan\n\n" + fence + "\n";
-    const body = heading + result.lines.join("\n") + "\n";
-    const insertion = result.widgetBefore ? widget + "\n" + body : body + "\n" + widget;
-    editor.replaceRange(insertion, editor.getCursor());
-  }
+.puyan-crown svg {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  stroke-width: 2.1;
+  display: block;
+}
 
-  refreshPresetCommands() {
-    const t = TEXT[this.settings.language];
-    if (this.presetCommandIds) {
-      for (const id of this.presetCommandIds) {
-        try { this.app.commands.removeCommand(id); } catch (_) {}
-      }
-    }
-    this.presetCommandIds = new Set();
-    for (const preset of (this.settings.savedChecklists || [])) {
-      const id = "create-checklist-" + preset.id;
-      this.addCommand({
-        id,
-        name: t.commandChecklistPrefix + " " + preset.name,
-        editorCallback: editor => {
-          new ChecklistWizardModal(this.app, this, result => this._insertChecklist(editor, result), preset).open();
-        }
-      });
-      this.presetCommandIds.add(id);
-    }
-  }
+.puyan-completion-text {
+  font-weight: 600;
+  color: var(--text-normal);
+  font-size: 0.92em;
+  flex: 1;
+}
 
-  async maybeShowWhatsNew() {
-    const currentVersion = this.manifest.version;
-    const stored = this.settings.lastSeenVersion || null;
+.theme-light .puyan-completion-text { color: #065f46; }
+.theme-dark .puyan-completion-text { color: #6ee7b7; }
 
-    if (!stored) {
-      this.settings.lastSeenVersion = currentVersion;
-      await this.saveSettings();
-      if (CHANGELOG[currentVersion]) {
-        setTimeout(() => {
-          new WhatsNewModal(this.app, this, currentVersion, true).open();
-        }, 600);
-      }
-      return;
-    }
+.puyan-duration-pill {
+  font-weight: 600;
+  color: #059669;
+  font-size: 0.82em;
+  background: rgba(16, 185, 129, 0.16);
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.32);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
 
-    if (stored === currentVersion) return;
+.theme-dark .puyan-duration-pill { color: #a7f3d0; }
 
-    this.settings.lastSeenVersion = currentVersion;
-    await this.saveSettings();
-    if (CHANGELOG[currentVersion]) {
-      setTimeout(() => {
-        new WhatsNewModal(this.app, this, currentVersion, false).open();
-      }, 600);
-    }
-  }
+.puyan-duration-info {
+  position: relative;
+  z-index: 2;
+  margin-top: 12px;
+  padding: 9px 14px;
+  background: color-mix(in srgb, var(--background-secondary) 75%, transparent);
+  border-radius: 12px;
+  border: 1px solid var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  direction: inherit;
+  font-size: 0.84em;
+  color: var(--text-muted);
+}
 
-  onunload() {
-    this.views.clear();
-    document.querySelectorAll(".puyan-cal-popover").forEach(n => n.remove());
-    document.querySelectorAll(".puyan-global-confetti").forEach(n => n.remove());
-  }
-  async saveSettings() { await this.saveData(this.settings); }
+.puyan-duration-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  color: var(--puyan-accent, var(--interactive-accent));
+}
 
-  textSetting(container, label, key, fallback) {
-    new Setting(container).setName(label).addText(input => input
-      .setValue(this.settings[key])
-      .onChange(async value => { this.settings[key] = value.trim() || fallback; await this.saveSettings(); }));
-  }
-  toggleSetting(container, label, key) {
-    new Setting(container).setName(label).addToggle(toggle => toggle
-      .setValue(this.settings[key])
-      .onChange(async value => { this.settings[key] = value; await this.saveSettings(); this.refreshAll(); }));
-  }
-  refreshAll() {
-    for (const set of this.views.values()) for (const view of set) view.refresh();
-  }
+.puyan-duration-icon svg {
+  width: 15px;
+  height: 15px;
+  min-width: 15px;
+  min-height: 15px;
+  stroke-width: 2;
+  display: block;
+}
 
-  async changeDateSettings(key, value) {
-    if (this.settings[key] === value) return;
-    if (value === "jalali" && !this.calApi.available) {
-      new Notice(TEXT[this.settings.language].calendarPluginMissing);
-      return;
-    }
-    const old = { calendar: this.settings.calendar, dateFormat: this.settings.dateFormat };
-    this.settings[key] = value;
-    await this.saveSettings();
-    let changed = 0, skipped = 0;
-    const touchedPaths = new Set();
-    const files = this.app.vault.getMarkdownFiles();
-    for (const file of files) {
-      const fm = (this.app.metadataCache.getFileCache(file) || {}).frontmatter;
-      if (!fm) continue;
-      const fields = [this.settings.startField, this.settings.endField];
-      const candidates = fields.filter(field => fm[field] !== undefined && fm[field] !== null && fm[field] !== "");
-      if (!candidates.length) continue;
-      touchedPaths.add(file.path);
-      this.updating.add(file.path);
-      try {
-        await this.app.fileManager.processFrontMatter(file, front => {
-          for (const field of candidates) {
-            const parsed = parseDateValue(front[field], old.calendar, this.calApi);
-            if (!parsed) { skipped++; continue; }
-            const formatted = formatDate(parsed, this.settings, this.calApi);
-            if (formatted && String(front[field]) !== formatted) { front[field] = formatted; changed++; }
-          }
-        });
-      } catch (_) {}
-    }
-    window.setTimeout(() => { touchedPaths.forEach(p => this.updating.delete(p)); }, 500);
-    await this.saveSettings();
-    this.refreshAll();
-    const t = TEXT[this.settings.language];
-    new Notice(skipped ? t.migrationPartial : changed ? t.migrationDone : t.migrationNone);
-  }
+.puyan-empty {
+  background: var(--background-secondary);
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  margin: 12px 0;
+}
 
-  async renderWidget(view) {
-    const file = this.app.vault.getAbstractFileByPath(view.path);
-    if (!file) return;
-    const content = await this.app.vault.cachedRead(file);
-    const tasks = readTasks(content, this.settings.countSubtasks);
-    const total = tasks.length, done = tasks.filter(Boolean).length;
-    const percent = total ? Math.round(done / total * 100) : 0;
-    const fm = (this.app.metadataCache.getFileCache(file) || {}).frontmatter || {};
-    const s = this.settings, t = TEXT[s.language];
-    const startKey = s.startField, endKey = s.endField, durationKey = s.durationField, progressKey = s.progressField;
-    const today = formatDate(new Date(), s, this.calApi);
+/* ============================================================
+   Directionality
+   ============================================================ */
+.puyan[dir="rtl"] { direction: rtl; text-align: right; }
+.puyan[dir="ltr"] { direction: ltr; text-align: left; }
+.puyan[dir="ltr"] .puyan-completion,
+.puyan[dir="ltr"] .puyan-duration-info { direction: ltr; }
+.puyan[dir="rtl"] .puyan-completion,
+.puyan[dir="rtl"] .puyan-duration-info { direction: rtl; }
 
-    if (total) {
-      const started = done > 0, completed = done === total;
-      const needsChange =
-        (started && !fm[startKey]) ||
-        (completed && !fm[endKey]) ||
-        (!completed && !!fm[endKey]) ||
-        (!started && !!fm[startKey]) ||
-        (s.saveProgress && (
-          percent === 0
-            ? fm[progressKey] !== undefined && fm[progressKey] !== null && String(fm[progressKey]).trim() !== ""
-            : Number(normalizeDigits(fm[progressKey] ?? NaN)) !== percent
-        ));
-      if (needsChange && !this.updating.has(file.path)) {
-        this.updating.add(file.path);
-        try {
-          await this.app.fileManager.processFrontMatter(file, front => {
-            if (started && !front[startKey]) front[startKey] = today;
-            if (completed && !front[endKey]) front[endKey] = today;
-            if (!completed) { delete front[endKey]; delete front[durationKey]; }
-            if (!started) { delete front[startKey]; delete front[endKey]; delete front[durationKey]; }
-            if (completed && front[startKey] && front[endKey]) {
-              const days = this.durationInDays(front[startKey], front[endKey]);
-              if (days !== null) front[durationKey] = days;
-            }
-            if (s.saveProgress) {
-              if (percent === 0) delete front[progressKey];
-              else front[progressKey] = percent;
-            }
-          });
-        } catch (error) { console.error("Puyan Frontmatter update failed", error); }
-        finally { window.setTimeout(() => this.updating.delete(file.path), 500); }
-      }
-    }
+/* ============================================================
+   Settings header with "what's new" icon
+   ============================================================ */
+.puyan-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
 
-    const latest = (this.app.metadataCache.getFileCache(file) || {}).frontmatter || fm;
-    view.el.empty();
-    view.el.addClass("puyan");
-    view.el.setAttribute("dir", s.language === "fa" ? "rtl" : "ltr");
-    view.el.toggleClass("is-complete", percent >= 100 && total > 0);
+.puyan-settings-title {
+  margin: 0 !important;
+  flex: 1;
+  min-width: 0;
+}
 
-    if (!total) {
-      view.el.createDiv({ cls: "puyan-empty", text: t.noTasks });
-      return;
-    }
+.puyan-whats-new-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--puyan-accent-border, var(--background-modifier-border));
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 0.78em;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
 
-    const lang = s.language;
-    const dir = lang === "fa" ? "rtl" : "ltr";
-    const theme = getProgressTheme(percent);
-    view.el.style.setProperty("--puyan-accent", theme.accent);
-    view.el.style.setProperty("--puyan-accent-soft", theme.soft);
-    view.el.style.setProperty("--puyan-accent-border", theme.border);
-    view.el.setAttribute("data-cross-note", view.isCrossNote ? "true" : "false");
+.puyan-whats-new-btn svg {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  min-height: 14px;
+  display: block;
+  flex-shrink: 0;
+  color: #8b5cf6;
+  transition: transform 0.4s ease;
+}
 
-    const header = view.el.createDiv({ cls: "puyan-header" });
-    const heading = header.createDiv({ cls: "puyan-heading" });
+.puyan-whats-new-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.18);
+}
 
-    const iconBox = heading.createDiv({
-      cls: "puyan-icon",
-      attr: { "aria-hidden": "true" }
-    });
-    renderIcon(iconBox, getWidgetIconForPercent(percent));
+.puyan-whats-new-btn:hover svg {
+  transform: rotate(-12deg) scale(1.08);
+  color: var(--interactive-accent);
+}
 
-    const titleGroup = heading.createDiv({ cls: "puyan-title-group" });
-    const statusText = percent >= 100 ? t.complete
-      : percent >= 75 ? t.near
-      : percent >= 50 ? t.halfway
-      : percent >= 25 ? t.doing
-      : t.start;
-    titleGroup.createDiv({
-      cls: "puyan-title",
-      text: view.title || statusText
-    });
+.puyan-whats-new-btn.is-empty svg {
+  color: var(--text-muted);
+}
 
-    if (s.showNoteTitle) {
-      const noteSub = titleGroup.createDiv({ cls: "puyan-note-title" });
-      const subIcon = noteSub.createSpan({ cls: "puyan-note-title-icon" });
-      renderIcon(subIcon, "noteLink");
-      noteSub.createSpan({ text: file.basename });
-    }
+.puyan-whats-new-version {
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  font-weight: 500;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
 
-    const actions = header.createDiv({ cls: "puyan-header-actions" });
+.puyan-whats-new-btn:hover .puyan-whats-new-version {
+  color: var(--text-normal);
+}
 
-    if (s.showCounter) {
-      const counterText = `${toLocalizedDigits(done, lang)} / ${toLocalizedDigits(total, lang)}`;
-      actions.createDiv({ cls: "puyan-counter", text: counterText });
-    }
+@media (max-width: 480px) {
+  .puyan-whats-new-btn { padding: 3px 8px 3px 6px; }
+  .puyan-whats-new-btn svg { width: 12px; height: 12px; min-width: 12px; min-height: 12px; }
+  .puyan-whats-new-version { display: none; }
+}
 
-    if (s.showOpenButton && view.isCrossNote) {
-      const openIconBtn = actions.createEl("button", {
-        cls: "puyan-open-icon-btn",
-        attr: {
-          type: "button",
-          title: `${t.openNoteTooltip}: ${file.basename}`,
-          "aria-label": `${t.openNoteTooltip}: ${file.basename}`
-        }
-      });
-      renderIcon(openIconBtn, dir === "rtl" ? "openExternalRtl" : "openExternalLtr");
-      openIconBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const newLeaf = e.ctrlKey || e.metaKey;
-        this.app.workspace.openLinkText(file.path, view.sourcePath, newLeaf);
-      });
-    }
+/* ============================================================
+   What's new modal
+   ============================================================ */
+.puyan-whats-new {
+  max-width: 560px;
+}
 
-    const track = view.el.createDiv({ cls: "puyan-track" });
-    const glow = track.createDiv({ cls: "puyan-glow" });
-    glow.style.width = percent + "%";
-    glow.style.background = theme.glow;
+.puyan-wn-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
 
-    const fill = track.createDiv({ cls: "puyan-fill" });
-    fill.style.width = percent + "%";
-    fill.style.background = theme.gradient;
+.puyan-wn-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-    const pctStr = toLocalizedDigits(percent, lang) + (lang === "fa" ? "٪" : "%");
-    if (percent >= 14) fill.setText(pctStr);
-    else track.createDiv({ cls: "puyan-outside-percent", text: pctStr });
+.puyan-wn-title {
+  margin: 0;
+  font-size: 1.35em;
+  font-weight: 700;
+  color: var(--text-normal);
+}
 
-    if (s.showCounter) {
-      const statsRow = view.el.createDiv({ cls: "puyan-stats" });
+.puyan-wn-subtitle {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
 
-      const doneChip = statsRow.createDiv({ cls: "puyan-stat-item" });
-      const doneIcon = doneChip.createSpan({ cls: "puyan-stat-icon" });
-      renderIcon(doneIcon, "checkMini");
-      doneChip.createSpan({ text: `${t.completedTasks}: ${toLocalizedDigits(done, lang)}` });
+.puyan-wn-intro {
+  margin: 0 0 16px;
+  font-size: 0.95em;
+  color: var(--text-normal);
+  line-height: 1.7;
+}
 
-      const remChip = statsRow.createDiv({ cls: "puyan-stat-item" });
-      const remIcon = remChip.createSpan({ cls: "puyan-stat-icon" });
-      renderIcon(remIcon, "circleMini");
-      remChip.createSpan({ text: `${t.remaining}: ${toLocalizedDigits(total - done, lang)}` });
-    }
+.puyan-wn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
-    const shownStart = done > 0 ? (latest[startKey] || today) : null;
-    const shownEnd = done === total ? (latest[endKey] || today) : null;
-    const duration = shownStart && shownEnd ? this.durationInDays(shownStart, shownEnd) : null;
+.puyan-wn-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
 
-    if (percent === 100 && shownEnd) {
-      const comp = view.el.createDiv({
-        cls: "puyan-completion",
-        attr: { title: lang === "fa" ? "کلیک برای پخش مجدد کاغذباران" : "Click to replay confetti" }
-      });
+.puyan-wn-item-icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--background-primary);
+  font-size: 1.1em;
+}
 
-      const crown = comp.createDiv({ cls: "puyan-crown" });
-      renderIcon(crown, "trophy");
+.puyan-wn-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
-      comp.createDiv({ cls: "puyan-completion-text", text: t.completionMsg });
+.puyan-wn-item-text {
+  font-size: 0.92em;
+  line-height: 1.7;
+  color: var(--text-normal);
+}
 
-      if (s.showDuration && duration !== null) {
-        const durationText = duration <= 1 ? t.lessThanDay : toLocalizedDigits(duration, lang) + " " + t.days;
-        comp.createDiv({
-          cls: "puyan-duration-pill",
-          text: `${t.duration} ${durationText}`
-        });
-      }
+.puyan-wn-example {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
 
-      comp.addEventListener("click", () => {
-        if (!s.enableConfetti) return;
-        launchConfettiOnElement(view.el);
-        launchGlobalConfetti();
-      });
+.puyan-wn-example-label {
+  font-size: 0.78em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
 
-      const transitionedTo100 =
-        (view.lastPercent !== null && view.lastPercent < 100) ||
-        (view.lastPercent === null && !view.hasCelebratedInitial100);
+.puyan-wn-code {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  font-family: var(--font-monospace);
+  font-size: 0.82em;
+  color: var(--text-normal);
+  direction: ltr;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
 
-      if (s.enableConfetti && transitionedTo100) {
-        view.hasCelebratedInitial100 = true;
-        setTimeout(() => {
-          launchConfettiOnElement(view.el);
-          launchGlobalConfetti();
-        }, 220);
-      }
-    } else if (shownStart && s.showStartDate) {
-      const info = view.el.createDiv({ cls: "puyan-duration-info" });
-      const icon = info.createSpan({ cls: "puyan-duration-icon" });
-      renderIcon(icon, "clock");
-      info.createSpan({ text: t.startedOn + " " + shownStart });
-    }
+.puyan-wn-code code {
+  background: transparent;
+  padding: 0;
+  border: none;
+  color: inherit;
+}
 
-    view.lastPercent = percent;
-  }
+.puyan-wn-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
 
-  durationInDays(start, end) {
-    const a = parseDateValue(start, this.settings.calendar, this.calApi);
-    const b = parseDateValue(end, this.settings.calendar, this.calApi);
-    if (!a || !b) return null;
-    return Math.max(0, Math.round((b.getTime() - a.getTime()) / 86400000));
-  }
-};
+@media (max-width: 480px) {
+  .puyan-wn-item { padding: 8px 10px; gap: 8px; }
+  .puyan-wn-item-icon { width: 22px; height: 22px; font-size: 0.95em; }
+  .puyan-wn-code { font-size: 0.76em; }
+  .puyan-wn-footer { flex-direction: column; }
+  .puyan-wn-footer button { width: 100%; }
+}
+
+/* ============================================================
+   Modal, settings direction
+   ============================================================ */
+.puyan-modal { direction: rtl; }
+.puyan-modal .setting-item-control { flex-wrap: wrap; }
+.puyan-modal[dir="ltr"] { direction: ltr; text-align: left; }
+.puyan-modal[dir="rtl"] { direction: rtl; text-align: right; }
+
+[dir="ltr"] .setting-item,
+[dir="ltr"] .setting-item-info,
+[dir="ltr"] .setting-item-name,
+[dir="ltr"] .setting-item-description { text-align: left; }
+[dir="rtl"] .setting-item,
+[dir="rtl"] .setting-item-info,
+[dir="rtl"] .setting-item-name,
+[dir="rtl"] .setting-item-description { text-align: right; }
+[dir="ltr"] .setting-item-control { direction: ltr; }
+[dir="rtl"] .setting-item-control { direction: rtl; }
+
+/* ============================================================
+   Template builder
+   ============================================================ */
+.puyan-tpl-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: var(--background-secondary);
+}
+.puyan-tpl-builder .puyan-tpl-input {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  padding: 8px 10px;
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  line-height: 1.6;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-sizing: border-box;
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: plaintext;
+}
+.puyan-tpl-builder .puyan-tpl-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 59, 130, 246), 0.25);
+}
+.puyan-tpl-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 0.85em;
+}
+.puyan-tpl-row + .puyan-tpl-row { margin-top: -2px; }
+.puyan-tpl-label {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  margin-inline-end: 4px;
+  white-space: nowrap;
+}
+.puyan-tpl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 3px 9px;
+  font-size: 0.85em;
+  font-family: var(--font-monospace);
+  color: var(--text-normal);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+  white-space: nowrap;
+  direction: ltr;
+}
+.puyan-tpl-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+.puyan-tpl-btn:active { transform: translateY(1px); }
+.puyan-tpl-btn.puyan-tpl-preset {
+  font-family: var(--font-interface);
+  padding: 4px 12px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, #fff);
+  border-color: var(--interactive-accent);
+}
+.puyan-tpl-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding-top: 8px;
+  margin-top: 2px;
+  border-top: 1px dashed var(--background-modifier-border);
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+.puyan-tpl-preview code {
+  font-family: var(--font-monospace);
+  font-size: 0.95em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  direction: ltr;
+  unicode-bidi: plaintext;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ============================================================
+   Wizard footer, stepper, date input
+   ============================================================ */
+.puyan-wizard-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.puyan-wizard-footer button {
+  min-width: 90px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: 0.9em;
+  cursor: pointer;
+}
+.puyan-wizard-footer button.mod-cta {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+.puyan-preset-name { font-weight: 600; color: var(--text-normal); }
+
+.puyan-date-input {
+  width: 130px;
+  padding: 4px 8px;
+  font-family: var(--font-monospace);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+.puyan-date-pick {
+  margin-inline-start: 6px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0;
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  vertical-align: middle;
+}
+.puyan-date-pick:hover {
+  background: var(--background-modifier-hover);
+  color: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+.puyan-date-pick svg,
+.puyan-date-pick .puyan-calendar-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  max-width: 18px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  pointer-events: none;
+}
+
+.puyan-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+}
+.puyan-stepper-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: var(--background-secondary);
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
+  color: var(--text-normal);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.puyan-stepper-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.puyan-stepper-input {
+  width: 42px;
+  text-align: center;
+  padding: 3px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  outline: none;
+}
+
+/* ============================================================
+   Inline popover calendar
+   ============================================================ */
+.puyan-cal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: transparent;
+}
+.puyan-cal-popover {
+  position: fixed;
+  width: 280px;
+  padding: 14px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 1001;
+  font-family: var(--font-interface);
+  color: var(--text-normal);
+  animation: puyanCalIn 0.12s ease;
+}
+@keyframes puyanCalIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.puyan-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 6px;
+}
+.puyan-cal-label {
+  font-weight: 600;
+  font-size: 0.95em;
+  text-align: center;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.puyan-cal-nav {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.2em;
+  line-height: 1;
+  color: var(--text-muted);
+}
+.puyan-cal-nav:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.puyan-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px 0;
+}
+.puyan-cal-wd {
+  text-align: center;
+  font-size: 0.7em;
+  color: var(--text-faint, var(--text-muted));
+  padding: 4px 0 6px;
+  font-weight: 500;
+}
+.puyan-cal-empty { height: 34px; }
+.puyan-cal-day {
+  height: 34px;
+  width: 34px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.puyan-cal-day:hover { background: var(--background-modifier-hover); }
+.puyan-cal-day.is-today {
+  border: 1.5px solid var(--interactive-accent);
+  color: var(--interactive-accent);
+  font-weight: 600;
+}
+.puyan-cal-day.is-selected {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: 700;
+}
+.puyan-cal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.puyan-cal-today,
+.puyan-cal-close {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  cursor: pointer;
+  font-size: 0.82em;
+  color: var(--text-normal);
+}
+.puyan-cal-today {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  font-weight: 600;
+}
+
+/* ============================================================
+   Support section (settings tab footer)
+   ============================================================ */
+.ot-support { margin-block: 32px 16px; color: var(--text-normal); }
+.ot-support .ot-contact-heading { margin: 0 0 6px; font-size: 1.1em; font-weight: 650; }
+.ot-support .ot-contact-intro { margin: 0 0 16px; font-size: 0.88em; line-height: 1.8; color: var(--text-muted); }
+.ot-support .ot-channel-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ot-support a.ot-channel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 14px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+}
+.ot-support a.ot-channel:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+  transform: translateY(-1px);
+}
+.ot-support .ot-channel-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+}
+.ot-support .ot-channel-logo svg { width: 24px; height: 24px; }
+.ot-support .ot-channel-name { font-size: 0.88em; font-weight: 650; text-align: center; }
+.ot-support .ot-channel-handle { font-size: 10px; color: var(--text-muted); direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+.ot-support .ot-channel-join { font-size: 0.75em; color: var(--text-accent); font-weight: 500; }
+.ot-support .ot-donation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 14px;
+  background: var(--background-secondary);
+}
+.ot-support .ot-donation-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  height: 40px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 50%;
+  background: var(--background-primary);
+  color: var(--text-accent);
+}
+.ot-support .ot-donation-symbol svg { width: 20px; height: 20px; }
+.ot-support .ot-donation-copy { flex: 1 1 180px; min-width: 0; }
+.ot-support .ot-donation-title { margin: 0 0 4px; font-size: 0.95em; font-weight: 650; }
+.ot-support .ot-donation-desc { margin: 0; font-size: 0.82em; line-height: 1.8; color: var(--text-muted); }
+.ot-support a.ot-donation-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 0.85em;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 480px) {
+  .puyan { padding: 15px 14px; border-radius: 18px; }
+  .puyan-header { gap: 8px; }
+  .puyan-icon { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 11px; }
+  .puyan-icon svg { width: 19px; height: 19px; min-width: 19px; min-height: 19px; }
+  .puyan-title { font-size: 0.98em; }
+  .puyan-counter { font-size: 0.75em; padding: 4px 9px; }
+  .puyan-open-icon-btn { width: 28px; height: 28px; border-radius: 8px; }
+  .puyan-stats { justify-content: flex-start; }
+  .puyan-completion { gap: 8px; padding: 10px 12px; }
+  .puyan-duration-pill { white-space: normal; }
+  .puyan-cal-popover { width: 260px; padding: 12px; }
+  .ot-support .ot-channel-grid { gap: 6px; }
+  .ot-support a.ot-channel { padding: 12px 4px 10px; }
+  .ot-support .ot-channel-logo { width: 36px; height: 36px; }
+  .ot-support .ot-channel-handle { display: none; }
+  .ot-support .ot-donation { padding: 12px; gap: 10px; }
+  .ot-support a.ot-donation-button { width: 100%; margin-inline-start: 0; }
+}
