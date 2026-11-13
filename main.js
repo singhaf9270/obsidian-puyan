@@ -1961,6 +1961,10 @@ module.exports = class PuyanPlugin extends Plugin {
     const prefersReducedMotion = window.matchMedia &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const pctSuffix = lang === "fa" ? "٪" : "%";
+    // Width is updated on every animation frame, so disable CSS transitions
+    // to keep the bar perfectly synchronized with the animated number.
+    glow.style.transition = "none";
+    fill.style.transition = "none";
     const pctLabel = percent >= 14
       ? fill
       : track.createDiv({ cls: "puyan-outside-percent" });
