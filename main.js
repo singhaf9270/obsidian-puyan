@@ -1953,26 +1953,58 @@ module.exports = class PuyanPlugin extends Plugin {
     const fill = track.createDiv({ cls: "puyan-fill" });
     fill.style.background = theme.gradient;
 
-    const targetWidth = percent + "%";
+    // Keep the last rendered value so a refresh continues from the current
+    // position instead of restarting the bar at zero.
+    const previousPercent = Number.isFinite(view._puyanProgressValue)
+      ? view._puyanProgressValue
+      : null;
     const prefersReducedMotion = window.matchMedia &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) {
-      glow.style.width = targetWidth;
-      fill.style.width = targetWidth;
-    } else {
-      // The widget DOM is rebuilt on every note update. Start at zero so the
-      // CSS width transition can animate to the newly calculated percentage.
-      glow.style.width = "0%";
-      fill.style.width = "0%";
-      requestAnimationFrame(() => {
-        glow.style.width = targetWidth;
-        fill.style.width = targetWidth;
-      });
+    const pctSuffix = lang === "fa" ? "٪" : "%";
+    const pctLabel = percent >= 14
+      ? fill
+      : track.createDiv({ cls: "puyan-outside-percent" });
+
+    const setProgressDisplay = value => {
+      const safeValue = Math.max(0, Math.min(100, value));
+      const width = safeValue + "%";
+      glow.style.width = width;
+      fill.style.width = width;
+      pctLabel.setText(toLocalizedDigits(Math.round(safeValue), lang) + pctSuffix);
+      view._puyanProgressValue = safeValue;
+    };
+
+    if (view._puyanAnimationFrame) {
+      cancelAnimationFrame(view._puyanAnimationFrame);
+      view._puyanAnimationFrame = null;
     }
 
-    const pctStr = toLocalizedDigits(percent, lang) + (lang === "fa" ? "٪" : "%");
-    if (percent >= 14) fill.setText(pctStr);
-    else track.createDiv({ cls: "puyan-outside-percent", text: pctStr });
+    if (prefersReducedMotion || previousPercent === null || previousPercent === percent) {
+      setProgressDisplay(percent);
+    } else {
+      const startPercent = previousPercent;
+      const difference = percent - startPercent;
+      const duration = 2800;
+      const startedAt = performance.now();
+      // Drive the bar and its percentage label from the same animation so
+      // the number never jumps ahead of (or lags behind) the visual progress.
+      const animateProgress = now => {
+        const linear = Math.min(1, (now - startedAt) / duration);
+        const eased = linear < 0.5
+          ? 4 * linear * linear * linear
+          : 1 - Math.pow(-2 * linear + 2, 3) / 2;
+        setProgressDisplay(startPercent + difference * eased);
+        if (linear < 1) {
+          view._puyanAnimationFrame = requestAnimationFrame(animateProgress);
+        } else {
+          view._puyanAnimationFrame = null;
+          setProgressDisplay(percent);
+        }
+      };
+      // Start from the exact last visible value; never flash back to zero.
+      setProgressDisplay(startPercent);
+      view._puyanAnimationFrame = requestAnimationFrame(animateProgress);
+    }
 
     if (s.showCounter) {
       const statsRow = view.el.createDiv({ cls: "puyan-stats" });
