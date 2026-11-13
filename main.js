@@ -20,9 +20,48 @@ const DEFAULT_SETTINGS = {
   enableConfetti: true,
   lastSeenVersion: "",
   savedChecklists: [
-    { id: "weekdays", name: "روزهای هفته", type: "fixed", items: ["شنبه","یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه"] },
-    { id: "steps10", name: "مراحل ده‌تایی", type: "step", interval: 10, dateStep: 1, template: "- [ ] {n}" },
-    { id: "stepsWithDates", name: "مراحل با تاریخ", type: "step", interval: 1, dateStep: 1, template: "- [ ] {date} — {n}" }
+    {
+      id: "weekdays", name: "روزهای هفته", type: "fixed", icon: "calendar",
+      color: "#6366f1", category: "daily",
+      items: ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"],
+      showInWizard: true, showInCommands: false, defaultWidgetBefore: true
+    },
+    {
+      id: "steps10", name: "مراحل ده‌تایی", type: "step", icon: "chart",
+      color: "#06b6d4", category: "reading", interval: 10, dateStep: 1,
+      template: "- [ ] {n}",
+      showInWizard: true, showInCommands: true, defaultWidgetBefore: true
+    },
+    {
+      id: "stepsWithDates", name: "مراحل با تاریخ", type: "step", icon: "calendar",
+      color: "#10b981", category: "planning", interval: 1, dateStep: 1,
+      template: "- [ ] {date} — {n}",
+      showInWizard: true, showInCommands: false, defaultWidgetBefore: true
+    },
+    {
+      id: "pomodoro4", name: "پومودورو (۴ دوره)", type: "fixed", icon: "target",
+      color: "#ef4444", category: "focus",
+      items: ["دوره ۱", "دوره ۲", "دوره ۳", "دوره ۴"],
+      showInWizard: true, showInCommands: true, defaultWidgetBefore: false
+    },
+    {
+      id: "daily7", name: "عادت روزانه (۷ روز)", type: "step", icon: "flame",
+      color: "#f59e0b", category: "habit", interval: 1, dateStep: 1,
+      template: "- [ ] روز {n} از {total}",
+      showInWizard: true, showInCommands: true, defaultWidgetBefore: false
+    },
+    {
+      id: "book12", name: "فصل‌های کتاب (۱۲ فصل)", type: "step", icon: "book",
+      color: "#8b5cf6", category: "reading", interval: 1, dateStep: 3,
+      template: "- [ ] فصل {n}",
+      showInWizard: true, showInCommands: true, defaultWidgetBefore: true
+    },
+    {
+      id: "workout30", name: "تمرین ورزشی ۳۰ روزه", type: "step", icon: "lightning",
+      color: "#22c55e", category: "fitness", interval: 5, dateStep: 1,
+      template: "- [ ] روز {n} — تمرین {total}",
+      showInWizard: true, showInCommands: false, defaultWidgetBefore: true
+    }
   ]
 };
 
@@ -173,6 +212,30 @@ const TEXT = {
    Changelog — shown in the "What's new" modal
    ============================================================ */
 const CHANGELOG = {
+  "1.2.0": {
+    title: {
+      fa: "✨ پویان ۱.۲.۰",
+      en: "✨ Puyan 1.2.0"
+    },
+    intro: {
+      fa: "نوار پیشرفت روان‌تر شده و هفت قالب آمادهٔ چک‌لیست به پویان اضافه شده‌اند.",
+      en: "Smoother progress animation and seven ready-to-use checklist presets."
+    },
+    items: {
+      fa: [
+        { icon: "🌊", text: "با تیک‌زدن یا برداشتن تیک تسک‌ها، نوار پیشرفت به‌صورت نرم و تدریجی حرکت می‌کند؛ دیگر درصد جدید ناگهانی نمایش داده نمی‌شود." },
+        { icon: "📋", text: "هفت قالب پیش‌فرض چک‌لیست اضافه شد: روزهای هفته، مراحل ده‌تایی، مراحل با تاریخ، پومودورو ۴ دوره‌ای، عادت روزانه ۷ روزه، فصل‌های کتاب ۱۲ فصلی و تمرین ورزشی ۳۰ روزه." },
+        { icon: "⚙️", text: "قالب‌ها دسته‌بندی، آیکون و رنگ اختصاصی دارند و مشخص می‌کنند در ویزارد یا فرمان‌های مستقل نمایش داده شوند." },
+        { icon: "🧩", text: "قالب‌های سفارشی قبلی حفظ می‌شوند و قالب‌های پیش‌فرض جدید بدون حذف اطلاعات قبلی به تنظیمات اضافه خواهند شد." }
+      ],
+      en: [
+        { icon: "🌊", text: "The progress bar now animates smoothly when tasks are checked or unchecked instead of jumping to the new percentage." },
+        { icon: "📋", text: "Added seven built-in checklist presets: weekdays, steps of ten, dated steps, four-session Pomodoro, seven-day habit, twelve book chapters, and a 30-day workout." },
+        { icon: "⚙️", text: "Presets include their own category, icon, color, and visibility settings for the wizard and individual commands." },
+        { icon: "🧩", text: "Existing custom checklists are preserved while new built-in presets are added to existing installations." }
+      ]
+    }
+  },
   "1.1.0": {
     title: {
       fa: "✨ پویان ۱.۱.۰",
@@ -1116,7 +1179,7 @@ class ChecklistPresetModal extends Modal {
     render();
     new Setting(el).addButton(x => x.setButtonText(old ? t.editList : t.addList).setCta().onClick(async () => {
       if (!name.trim()) { new Notice(t.invalid); return; }
-      const item = { id: old?.id || "puyan-" + Date.now(), name: name.trim(), type };
+      const item = { ...(old || {}), id: old?.id || "puyan-" + Date.now(), name: name.trim(), type };
       if (type === "fixed") {
         item.items = items.split(",").map(v => v.trim()).filter(Boolean);
         if (!item.items.length) { new Notice(t.listEmpty); return; }
@@ -1151,8 +1214,9 @@ class ChecklistWizardModal extends Modal {
     const el = this.contentEl, t = this.t, p = this.plugin;
     el.addClass("puyan-modal");
     el.setAttribute("dir", p.settings.language === "fa" ? "rtl" : "ltr");
-    const arr = p.settings.savedChecklists || [];
-    if (!arr.length) {
+    const arr = (p.settings.savedChecklists || []).filter(v => v.showInWizard !== false);
+    this.availablePresets = arr;
+    if (!arr.length && !this.preset) {
       el.createEl("h2", { text: t.modalTitle });
       el.createDiv({ text: t.noSavedLists, cls: "puyan-empty" });
       return;
@@ -1164,7 +1228,7 @@ class ChecklistWizardModal extends Modal {
       stepTotal: "",
       stepInterval: "",
       dateStep: "1",
-      widgetBefore: false
+      widgetBefore: Boolean(this.preset ? this.preset.defaultWidgetBefore : arr[0]?.defaultWidgetBefore)
     };
     this.headerEl = el.createEl("h2");
     this.bodyEl = el.createDiv();
@@ -1195,7 +1259,7 @@ class ChecklistWizardModal extends Modal {
   }
 
   _renderStep() {
-    const t = this.t, p = this.plugin, arr = p.settings.savedChecklists || [];
+    const t = this.t, p = this.plugin, arr = this.availablePresets || [];
     const preset = this._currentPreset();
     this.headerEl.textContent = this.step === 1 ? t.modalTitle : (preset ? preset.name : t.modalTitle);
     this.bodyEl.empty();
@@ -1210,6 +1274,7 @@ class ChecklistWizardModal extends Modal {
             const pr = this._currentPreset();
             this.state.stepInterval = pr ? String(pr.interval || 10) : "";
             this.state.dateStep = String(pr?.dateStep || 1);
+            this.state.widgetBefore = Boolean(pr?.defaultWidgetBefore);
           });
         });
       } else {
@@ -1556,15 +1621,20 @@ class PuyanSettings extends PluginSettingTab {
 /* ==================================================================== */
 module.exports = class PuyanPlugin extends Plugin {
   async onload() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-    if (!Array.isArray(this.settings.savedChecklists)) this.settings.savedChecklists = DEFAULT_SETTINGS.savedChecklists;
+    const storedData = (await this.loadData()) || {};
+    const storedLists = Array.isArray(storedData.savedChecklists) ? storedData.savedChecklists : [];
+    const builtInIds = new Set(DEFAULT_SETTINGS.savedChecklists.map(p => p.id));
+    const builtInPresets = DEFAULT_SETTINGS.savedChecklists.map(defaultPreset => {
+      const existing = storedLists.find(p => p && p.id === defaultPreset.id);
+      return existing ? { ...defaultPreset, ...existing } : { ...defaultPreset };
+    });
+    const customPresets = storedLists.filter(p => p && !builtInIds.has(p.id));
+    const mergedPresets = [...builtInPresets, ...customPresets];
 
-    const hasDated = this.settings.savedChecklists.some(p => p.id === "stepsWithDates");
-    if (!hasDated) {
-      this.settings.savedChecklists.push(DEFAULT_SETTINGS.savedChecklists.find(p => p.id === "stepsWithDates"));
-      await this.saveSettings();
-    }
-    let migrated = false;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, storedData, {
+      savedChecklists: mergedPresets
+    });
+    let migrated = JSON.stringify(storedLists) !== JSON.stringify(mergedPresets);
     for (const preset of this.settings.savedChecklists) {
       if (preset && preset.type === "step") {
         if ("total" in preset) { delete preset.total; migrated = true; }
@@ -1661,6 +1731,7 @@ module.exports = class PuyanPlugin extends Plugin {
     }
     this.presetCommandIds = new Set();
     for (const preset of (this.settings.savedChecklists || [])) {
+      if (preset.showInCommands === false) continue;
       const id = "create-checklist-" + preset.id;
       this.addCommand({
         id,
@@ -1877,12 +1948,27 @@ module.exports = class PuyanPlugin extends Plugin {
 
     const track = view.el.createDiv({ cls: "puyan-track" });
     const glow = track.createDiv({ cls: "puyan-glow" });
-    glow.style.width = percent + "%";
     glow.style.background = theme.glow;
 
     const fill = track.createDiv({ cls: "puyan-fill" });
-    fill.style.width = percent + "%";
     fill.style.background = theme.gradient;
+
+    const targetWidth = percent + "%";
+    const prefersReducedMotion = window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      glow.style.width = targetWidth;
+      fill.style.width = targetWidth;
+    } else {
+      // The widget DOM is rebuilt on every note update. Start at zero so the
+      // CSS width transition can animate to the newly calculated percentage.
+      glow.style.width = "0%";
+      fill.style.width = "0%";
+      requestAnimationFrame(() => {
+        glow.style.width = targetWidth;
+        fill.style.width = targetWidth;
+      });
+    }
 
     const pctStr = toLocalizedDigits(percent, lang) + (lang === "fa" ? "٪" : "%");
     if (percent >= 14) fill.setText(pctStr);

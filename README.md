@@ -39,6 +39,11 @@ Puyan is a bilingual progress-tracking plugin for Obsidian. It turns Markdown ta
 - Lets you customize the generated line template with placeholders.
 - Supports per-item dates with a configurable date step.
 
+
+### Built-in checklist presets
+
+Puyan includes seven ready-to-use templates: weekdays, steps of ten, dated steps, four Pomodoro sessions, a seven-day habit, twelve book chapters, and a 30-day workout. Each preset includes a category, icon, color, and controls for whether it appears in the checklist wizard or as an individual command. The default setting also controls whether the progress widget is inserted before or after the generated checklist. Existing custom presets are preserved when upgrading.
+
 ### Language, layout, and appearance
 - Persian and English interface.
 - Settings and modal layouts adapt to RTL or LTR according to the selected language.
@@ -195,6 +200,13 @@ Then enable **Puyan** from Obsidian's Community Plugins settings.
 
 MIT
 
+## What's new in 1.2.0
+
+- Smooth, animated progress-bar movement when tasks are checked or unchecked, with support for reduced-motion preferences.
+- Added seven built-in checklist presets: weekdays, steps of ten, dated steps, four-session Pomodoro, seven-day habit, twelve book chapters, and a 30-day workout.
+- Added preset categories, icons, colors, wizard/command visibility, and default widget placement.
+- Existing custom checklist templates are preserved when upgrading.
+
 ## What's new in 1.1.0
 
 - **Redesigned glassmorphic widget** with SVG icons, accent-themed glow, animated shimmer fill, and dedicated stat chips.
@@ -223,6 +235,12 @@ If you find Puyan useful, you can support its continued development:
 ---
 
 ## Changelog
+
+### 1.2.0
+- Added smooth progress-bar animation when task completion changes, respecting reduced-motion preferences.
+- Added seven built-in checklist presets with category, icon, color, visibility, and default widget placement settings.
+- Preserved user-created checklist templates during settings migration.
+
 
 ### 1.1.0
 - Redesigned the widget with glassmorphic cards, SVG icons, dynamic accent colors, animated progress bar and shimmer.
