@@ -1179,7 +1179,7 @@ class ChecklistPresetModal extends Modal {
     render();
     new Setting(el).addButton(x => x.setButtonText(old ? t.editList : t.addList).setCta().onClick(async () => {
       if (!name.trim()) { new Notice(t.invalid); return; }
-      const item = { id: old?.id || "puyan-" + Date.now(), name: name.trim(), type };
+      const item = { ...(old || {}), id: old?.id || "puyan-" + Date.now(), name: name.trim(), type };
       if (type === "fixed") {
         item.items = items.split(",").map(v => v.trim()).filter(Boolean);
         if (!item.items.length) { new Notice(t.listEmpty); return; }
@@ -1216,7 +1216,7 @@ class ChecklistWizardModal extends Modal {
     el.setAttribute("dir", p.settings.language === "fa" ? "rtl" : "ltr");
     const arr = (p.settings.savedChecklists || []).filter(v => v.showInWizard !== false);
     this.availablePresets = arr;
-    if (!arr.length) {
+    if (!arr.length && !this.preset) {
       el.createEl("h2", { text: t.modalTitle });
       el.createDiv({ text: t.noSavedLists, cls: "puyan-empty" });
       return;
@@ -1228,7 +1228,7 @@ class ChecklistWizardModal extends Modal {
       stepTotal: "",
       stepInterval: "",
       dateStep: "1",
-      widgetBefore: Boolean((this.preset || arr[0]).defaultWidgetBefore)
+      widgetBefore: Boolean(this.preset ? this.preset.defaultWidgetBefore : arr[0]?.defaultWidgetBefore)
     };
     this.headerEl = el.createEl("h2");
     this.bodyEl = el.createDiv();
@@ -1628,7 +1628,7 @@ module.exports = class PuyanPlugin extends Plugin {
       const existing = storedLists.find(p => p && p.id === defaultPreset.id);
       return existing ? { ...defaultPreset, ...existing } : { ...defaultPreset };
     });
-    const customPresets = storedLists.filter(p => !p || !builtInIds.has(p.id));
+    const customPresets = storedLists.filter(p => p && !builtInIds.has(p.id));
     const mergedPresets = [...builtInPresets, ...customPresets];
 
     this.settings = Object.assign({}, DEFAULT_SETTINGS, storedData, {
