@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
   showNoteTitle: true,
   showOpenButton: true,
   enableConfetti: true,
+  progressAnimationDuration: 2000,
   lastSeenVersion: "",
   savedChecklists: [
     {
@@ -77,6 +78,8 @@ const TEXT = {
     showDuration: "نمایش مدت انجام", showNoteTitle: "نمایش عنوان یادداشت", showOpenButton: "نمایش دکمهٔ بازکردن یادداشت",
     enableConfetti: "جشن کاغذباران در ۱۰۰٪",
     enableConfettiDesc: "پخش کاغذباران روی کل صفحهٔ ابسیدین هنگام رسیدن پیشرفت به صددرصد",
+    progressAnimationSpeed: "سرعت انیمیشن نوار پیشرفت",
+    progressAnimationSpeedDesc: "مدت حرکت نوار و عدد درصد؛ زمان کمتر یعنی حرکت سریع‌تر.",
     commandInsert: "درج ویجت پیشرفت", commandChecklist: "ساخت چک‌لیست از قالب (انتخاب دستی)",
     commandChecklistPrefix: "ساخت چک‌لیست:",
     modalTitle: "ساخت چک‌لیست", activity: "عنوان فعالیت", total: "مقدار کل",
@@ -147,6 +150,8 @@ const TEXT = {
     showDuration: "Show duration", showNoteTitle: "Show note title", showOpenButton: "Show 'open note' button",
     enableConfetti: "Confetti celebration at 100%",
     enableConfettiDesc: "Play paper confetti across the Obsidian window when progress reaches 100%",
+    progressAnimationSpeed: "Progress animation speed",
+    progressAnimationSpeedDesc: "Duration of the bar and percentage animation; a shorter time means faster movement.",
     commandInsert: "Insert progress widget", commandChecklist: "Create checklist from template (pick manually)",
     commandChecklistPrefix: "Create checklist:",
     modalTitle: "Create checklist", activity: "Activity title", total: "Total amount",
@@ -218,18 +223,20 @@ const CHANGELOG = {
       en: "✨ Puyan 1.2.0"
     },
     intro: {
-      fa: "نوار پیشرفت روان‌تر شده و هفت قالب آمادهٔ چک‌لیست به پویان اضافه شده‌اند.",
-      en: "Smoother progress animation and seven ready-to-use checklist presets."
+      fa: "انیمیشن هماهنگ نوار و درصد با سرعت قابل تنظیم، در کنار هفت قالب آمادهٔ چک‌لیست.",
+      en: "Synchronized, adjustable-speed progress animation and seven ready-to-use checklist presets."
     },
     items: {
       fa: [
-        { icon: "🌊", text: "با تیک‌زدن یا برداشتن تیک تسک‌ها، نوار پیشرفت به‌صورت نرم و تدریجی حرکت می‌کند؛ دیگر درصد جدید ناگهانی نمایش داده نمی‌شود." },
+        { icon: "🌊", text: "با تیک‌زدن یا برداشتن تیک تسک‌ها، نوار پیشرفت و عدد درصد هم‌زمان و به‌صورت نرم حرکت می‌کنند؛ حرکت از آخرین موقعیت نمایش‌داده‌شده ادامه پیدا می‌کند." },
+        { icon: "⚡", text: "سرعت انیمیشن نوار و عدد درصد از تنظیمات قابل تغییر است؛ پنج سطح از خیلی سریع تا خیلی آرام در دسترس است." },
         { icon: "📋", text: "هفت قالب پیش‌فرض چک‌لیست اضافه شد: روزهای هفته، مراحل ده‌تایی، مراحل با تاریخ، پومودورو ۴ دوره‌ای، عادت روزانه ۷ روزه، فصل‌های کتاب ۱۲ فصلی و تمرین ورزشی ۳۰ روزه." },
         { icon: "⚙️", text: "قالب‌ها دسته‌بندی، آیکون و رنگ اختصاصی دارند و مشخص می‌کنند در ویزارد یا فرمان‌های مستقل نمایش داده شوند." },
         { icon: "🧩", text: "قالب‌های سفارشی قبلی حفظ می‌شوند و قالب‌های پیش‌فرض جدید بدون حذف اطلاعات قبلی به تنظیمات اضافه خواهند شد." }
       ],
       en: [
-        { icon: "🌊", text: "The progress bar now animates smoothly when tasks are checked or unchecked instead of jumping to the new percentage." },
+        { icon: "🌊", text: "The progress bar and percentage now animate together smoothly, continuing from the last visible position." },
+        { icon: "⚡", text: "Animation speed for both the bar and percentage is configurable in settings, with five levels from very fast to very slow." },
         { icon: "📋", text: "Added seven built-in checklist presets: weekdays, steps of ten, dated steps, four-session Pomodoro, seven-day habit, twelve book chapters, and a 30-day workout." },
         { icon: "⚙️", text: "Presets include their own category, icon, color, and visibility settings for the wizard and individual commands." },
         { icon: "🧩", text: "Existing custom checklists are preserved while new built-in presets are added to existing installations." }
@@ -1546,6 +1553,17 @@ class PuyanSettings extends PluginSettingTab {
     p.toggleSetting(el, t.showNoteTitle, "showNoteTitle");
     p.toggleSetting(el, t.showOpenButton, "showOpenButton");
     p.toggleSetting(el, t.enableConfetti, "enableConfetti");
+    new Setting(el).setName(t.progressAnimationSpeed).setDesc(t.progressAnimationSpeedDesc).addDropdown(d => d
+      .addOption("1200", s.language === "fa" ? "خیلی سریع (۱٫۲ ثانیه)" : "Very fast (1.2 s)")
+      .addOption("1600", s.language === "fa" ? "سریع (۱٫۶ ثانیه)" : "Fast (1.6 s)")
+      .addOption("2000", s.language === "fa" ? "متعادل (۲ ثانیه)" : "Balanced (2 s)")
+      .addOption("2400", s.language === "fa" ? "آرام (۲٫۴ ثانیه)" : "Slow (2.4 s)")
+      .addOption("2800", s.language === "fa" ? "خیلی آرام (۲٫۸ ثانیه)" : "Very slow (2.8 s)")
+      .setValue(String(s.progressAnimationDuration || 2000))
+      .onChange(async value => {
+        s.progressAnimationDuration = Number(value);
+        await p.saveSettings();
+      }));
 
     el.createEl("h3", { text: t.savedLists });
     const addRow = new Setting(el).setName(t.savedLists).setDesc(
@@ -1988,7 +2006,7 @@ module.exports = class PuyanPlugin extends Plugin {
     } else {
       const startPercent = previousPercent;
       const difference = percent - startPercent;
-      const duration = 2800;
+      const duration = Math.max(400, Math.min(5000, Number(s.progressAnimationDuration) || 2000));
       const startedAt = performance.now();
       // Drive the bar and its percentage label from the same animation so
       // the number never jumps ahead of (or lags behind) the visual progress.
