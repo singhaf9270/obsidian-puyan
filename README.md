@@ -202,7 +202,8 @@ MIT
 
 ## What's new in 1.2.0
 
-- Smooth, animated progress-bar movement when tasks are checked or unchecked, with support for reduced-motion preferences.
+- Smooth, synchronized animation for the progress bar and percentage number; the animation continues from its last visible position when progress changes again.
+- Configurable animation speed with five levels, from very fast (1.2 seconds) to very slow (2.8 seconds); the default is 2 seconds. Reduced-motion preferences are respected.
 - Added seven built-in checklist presets: weekdays, steps of ten, dated steps, four-session Pomodoro, seven-day habit, twelve book chapters, and a 30-day workout.
 - Added preset categories, icons, colors, wizard/command visibility, and default widget placement.
 - Existing custom checklist templates are preserved when upgrading.
@@ -237,7 +238,8 @@ If you find Puyan useful, you can support its continued development:
 ## Changelog
 
 ### 1.2.0
-- Added smooth progress-bar animation when task completion changes, respecting reduced-motion preferences.
+- Added synchronized animation for the progress bar and percentage number, continuing from the last visible position.
+- Added a five-level animation-speed setting (1.2–2.8 seconds; default 2 seconds), while respecting reduced-motion preferences.
 - Added seven built-in checklist presets with category, icon, color, visibility, and default widget placement settings.
 - Preserved user-created checklist templates during settings migration.
 
