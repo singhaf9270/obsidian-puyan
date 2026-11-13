@@ -1206,3 +1206,10 @@
   .ot-support .ot-donation { padding: 12px; gap: 10px; }
   .ot-support a.ot-donation-button { width: 100%; margin-inline-start: 0; }
 }
+/* Respect the operating system's reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  .puyan-fill,
+  .puyan-glow {
+    transition: none !important;
+  }
+}
